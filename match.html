@@ -26,30 +26,6 @@
     </div>
   </header>
 
-  <section class="picker picker-compact">
-    <div class="comp-row">
-      <label for="compSelect">Switch competition</label>
-      <select class="comp-select" id="compSelect"></select>
-    </div>
-
-    <div id="matchListWrap">
-      <div class="match-list" id="matchList"></div>
-    </div>
-
-    <div id="teamPickWrap">
-      <div class="matchup-row">
-        <select class="team-select" id="homeSelect"></select>
-        <span class="vs-mark">vs</span>
-        <select class="team-select" id="awaySelect"></select>
-        <button class="swap-btn" id="swapBtn" type="button" aria-label="Swap home and away">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7h13l-4-4M17 17H4l4 4"/></svg>
-        </button>
-        <button class="cta-btn" id="freePickGo" type="button">View odds →</button>
-      </div>
-      <div class="rivalry-row" id="rivalryRow"></div>
-    </div>
-  </section>
-
   <main class="layout">
     <section class="panel panel-free" aria-labelledby="free-heading">
       <div class="panel-head">
@@ -89,6 +65,8 @@
             <select id="refSelect"></select>
             <span class="ref-hint" id="refHint"></span>
           </div>
+
+          <p class="section-note pick-hint">Tap any value below to add it to your accumulator.</p>
 
           <div class="market-tabs" id="marketTabs" role="tablist"></div>
 
@@ -184,9 +162,7 @@
       <div class="gate-content">
         <p class="section-label" id="accaCurrentLabel">Add from the current match</p>
         <p class="acca-played-notice" id="accaPlayedNotice"></p>
-        <div class="acca-add-row" id="accaMarkets"></div>
-        <div class="acca-layout">
-          <div></div>
+        <div class="acca-layout single">
           <div class="slip" id="slipFull">
             <h4>Bet slip</h4>
           </div>

@@ -518,7 +518,6 @@ select{
 .hm-corner{ background:transparent; }
 
 /* ---------- Acca ---------- */
-.acca-add-row{ display:flex; flex-wrap:wrap; gap:7px; margin-bottom: 16px; }
 .market-btn{
   border: 1px solid var(--hairline);
   background: var(--surface-2);
@@ -538,6 +537,39 @@ select{
 
 .acca-layout{ display:grid; grid-template-columns: 1.3fr 1fr; gap: 22px; }
 @media (max-width: 780px){ .acca-layout{ grid-template-columns: 1fr; } }
+.acca-layout.single{ display:block; }
+.acca-layout.single .slip{ max-width: 460px; }
+@media (max-width: 780px){ .acca-layout.single .slip{ max-width:none; } }
+
+/* ---------- Clickable market values (Every Market -> acca) ---------- */
+.pick-hint{ margin-top:-8px; }
+.pickable{ cursor:pointer; transition: background-color .12s ease, border-color .12s ease, color .12s ease, outline-color .12s ease; }
+.pickable:focus-visible{ outline: 2px solid var(--focus); outline-offset: 2px; }
+
+.mini-list li.pickable:hover{ border-color: var(--accent); }
+.mini-list li.picked{ background: var(--accent); border-color: var(--accent); color:#04170C; }
+.mini-list li.picked .v{ color:#04170C; }
+.mini-list li.picked .sub{ color: rgba(4,23,12,0.72); }
+
+.stat-tile.pickable:hover{ border-color: var(--accent); }
+.stat-tile.picked{ background: var(--accent); border-color: var(--accent); }
+.stat-tile.picked .label{ color: rgba(4,23,12,0.78); }
+.stat-tile.picked .value{ color:#04170C; }
+.stat-tile.picked .meter{ background: rgba(4,23,12,0.25); }
+.stat-tile.picked .meter > i{ background:#04170C; }
+
+.score-list li.pickable{ border-radius:6px; padding: 4px 6px; margin: 0 -6px; }
+.score-list li.pickable:hover{ background: var(--surface-2); }
+.score-list li.picked{ background: var(--accent); color:#04170C; }
+.score-list li.picked .rank, .score-list li.picked .sc, .score-list li.picked .p{ color:#04170C; }
+.score-list li.picked .bar{ background: rgba(4,23,12,0.25); }
+.score-list li.picked .bar > i{ background:#04170C; }
+
+.data-table td.pickable:hover{ background: var(--surface-2); }
+.data-table td.picked{ background: var(--accent); color:#04170C; font-weight:700; border-radius:4px; }
+
+.hm-cell.pickable:hover{ outline: 2px solid var(--ink-muted); outline-offset:-2px; }
+.hm-cell.picked{ outline: 2px solid var(--accent-bright); outline-offset:-2px; }
 
 .slip{
   background: var(--surface-2);

@@ -1,10 +1,12 @@
 /* PitchCheck — single match page (match.html). Reads which fixture to show
  * from the URL (?comp=...&idx=... for a league fixture, or
  * ?comp=...&home=...&away=... for a free-pick competition), builds the
- * model via engine.js, and renders the full market breakdown. The mini
- * competition/match switcher at the top navigates to a new URL rather than
- * mutating in-page state, so every view is a real, linkable page — but the
- * acca slip (acca.js) is shared storage, so legs survive the navigation.
+ * model via engine.js, and renders the page scoped to just that match —
+ * every value across the Every Market tabs doubles as an acca-leg toggle
+ * (see pickable()/refreshPicked() below), so there's no separate quick-add
+ * row. Navigation back to other fixtures is the "All fixtures" link to
+ * index.html; the acca slip (acca.js) is shared storage, so legs survive
+ * that navigation either way.
  */
 (function () {
   "use strict";
@@ -14,15 +16,11 @@
     var p = new URLSearchParams(window.location.search);
     return { comp: p.get("comp")||"epl", idx: p.get("idx"), home: p.get("home"), away: p.get("away") };
   }
-  function matchUrl(compId, params){
-    var q = ["comp="+encodeURIComponent(compId)];
-    Object.keys(params).forEach(function(k){ q.push(k+"="+encodeURIComponent(params[k])); });
-    return "match.html?"+q.join("&");
-  }
 
   var params = qs();
   var comp = E.compOf(params.comp) || E.compOf("epl");
   var state = { activeTab:"result", refPoolKey:null, refIdx:0 };
+  var currentModel = null, currentMatchInfo = null, matchKey = null, matchPlayable = true;
 
   function el(tag, attrs, html){
     var e = document.createElement(tag);
@@ -30,32 +28,61 @@
     if(html!=null) e.innerHTML = html;
     return e;
   }
-  function fmtDate(dateStr){
-    var d = new Date(dateStr+"T12:00:00");
-    return d.toLocaleDateString(undefined, { weekday:"long", day:"numeric", month:"long" });
-  }
   function fmtDateShort(dateStr){
     var d = new Date(dateStr+"T12:00:00");
     return d.toLocaleDateString(undefined, { weekday:"short", day:"numeric", month:"short" });
   }
   function pct(x){ return E.pct(x); }
-  function miniRow(label, value, sub){
+
+  // ---------- Click-to-add: every market value doubles as an acca toggle ----------
+  // `shortKey` identifies the market within this match; fullKey() namespaces
+  // it to the current fixture so the same market on a different match (or a
+  // different referee's cards line) is a distinct leg. Rows/tiles/cells are
+  // only made interactive when the match hasn't been played yet.
+  function fullKey(shortKey){ return matchKey + "|" + shortKey; }
+  function legLabel(text){ return currentModel.home.name+" v "+currentModel.away.name+" — "+text; }
+  function pickable(node, shortKey, legText, prob){
+    if(!matchPlayable || shortKey==null) return;
+    var legKey = fullKey(shortKey);
+    var leg = { key: legKey, label: legLabel(legText), prob: prob, matchKey: matchKey };
+    node.classList.add("pickable");
+    node.setAttribute("data-leg-key", legKey);
+    node.setAttribute("role", "button");
+    node.setAttribute("tabindex", "0");
+    node.setAttribute("aria-pressed", String(ACCA.hasLeg(legKey)));
+    if(ACCA.hasLeg(legKey)) node.classList.add("picked");
+    function toggle(e){ e.preventDefault(); ACCA.toggleLeg(leg); refreshPicked(); }
+    node.addEventListener("click", toggle);
+    node.addEventListener("keydown", function(e){ if(e.key==="Enter" || e.key===" "){ toggle(e); } });
+  }
+  function refreshPicked(){
+    document.querySelectorAll("[data-leg-key]").forEach(function(node){
+      var picked = ACCA.hasLeg(node.getAttribute("data-leg-key"));
+      node.classList.toggle("picked", picked);
+      node.setAttribute("aria-pressed", String(picked));
+    });
+  }
+
+  function miniRow(label, value, sub, shortKey, prob, legText){
     var li = el("li", {});
     li.innerHTML = '<span>'+label+(sub?'<span class="sub">'+sub+'</span>':'')+'</span><span class="v mono">'+value+'</span>';
+    pickable(li, shortKey, legText || (label+(sub?" — "+sub:"")), prob);
     return li;
   }
-  function statTile(label, value, ratio, premium){
+  function statTile(label, value, ratio, premium, shortKey, prob){
     var tile = el("div", {"class":"stat-tile"+(premium?" premium-hue":"")});
     tile.innerHTML =
       '<div class="label">'+label+'</div>' +
       '<div class="value mono">'+value+'</div>' +
       '<div class="meter"><i style="width:'+Math.round(ratio*100)+'%"></i></div>';
+    pickable(tile, shortKey, label, prob);
     return tile;
   }
-  function tilesFromLines(container, prefix, lines){
+  function tilesFromLines(container, prefix, lines, keyPrefix){
     container.innerHTML = "";
     lines.forEach(function(cl){
-      container.appendChild(statTile(prefix+" O"+cl.line, pct(cl.over), cl.over, true));
+      var shortKey = keyPrefix ? (keyPrefix+"_"+cl.line) : null;
+      container.appendChild(statTile(prefix+" O"+cl.line, pct(cl.over), cl.over, true, shortKey, cl.over));
     });
   }
 
@@ -77,92 +104,6 @@
     if(!home) home = pool[0];
     if(!away) away = pool[1] || pool[0];
     return { homeTeam: home, awayTeam: away, matchInfo: null };
-  }
-
-  // ---------- Mini switcher (navigates, doesn't mutate in place) ----------
-  function renderCompSelect(){
-    var sel = document.getElementById("compSelect");
-    if(sel.options.length===0){
-      var groups = { league:"Leagues (real fixtures)", euro:"European competitions", cup:"Domestic cups" };
-      var lastGroup = null, optgroup = null;
-      E.COMPETITIONS.forEach(function(c){
-        if(c.type!==lastGroup){
-          optgroup = el("optgroup", {label: groups[c.type]});
-          sel.appendChild(optgroup);
-          lastGroup = c.type;
-        }
-        optgroup.appendChild(el("option", {value:c.id}, c.label));
-      });
-      sel.addEventListener("change", function(){
-        window.location.href = matchUrl(sel.value, {});
-      });
-    }
-    sel.value = comp.id;
-    document.getElementById("matchListWrap").style.display = comp.type==="league" ? "" : "none";
-    document.getElementById("teamPickWrap").style.display = comp.type==="league" ? "none" : "";
-  }
-
-  function renderMatchList(current){
-    var wrap = document.getElementById("matchList");
-    wrap.innerHTML = "";
-    var matches = E.currentLeagueMatches(comp.id);
-    var firstUpcoming = matches.findIndex(function(m){ return !m.played; });
-    var lastDate = null;
-    matches.forEach(function(m, i){
-      if(m.date!==lastDate){
-        wrap.appendChild(el("div", {"class":"match-date-head"}, fmtDate(m.date)));
-        lastDate = m.date;
-      }
-      if(i===firstUpcoming && firstUpcoming>0){
-        wrap.appendChild(el("div", {"class":"today-divider"}, "Upcoming"));
-      }
-      var isActive = current.matchInfo && m.idx===current.matchInfo.idx;
-      var row = el("a", {"class":"match-row"+(isActive?" active":""), "href": matchUrl(comp.id, {idx:m.idx})});
-      var scoreHtml = m.played
-        ? '<span class="match-score">'+m.hg+' – '+m.ag+'</span>'
-        : '<span class="match-kickoff">'+(m.kickoff||"")+'</span>';
-      row.innerHTML =
-        '<span class="match-team home">'+m.home+'</span>' +
-        scoreHtml +
-        '<span class="match-team away">'+m.away+'</span>' +
-        (m.played ? '<span class="ft-pill">FT</span>' : '');
-      wrap.appendChild(row);
-    });
-  }
-
-  function renderTeamPick(current){
-    var pool = E.poolFor(comp.id);
-    var homeIdx = Math.max(0, pool.indexOf(current.homeTeam));
-    var awayIdx = Math.max(0, pool.indexOf(current.awayTeam));
-    var homeSel = document.getElementById("homeSelect");
-    var awaySel = document.getElementById("awaySelect");
-    [homeSel, awaySel].forEach(function(sel){
-      sel.innerHTML = "";
-      pool.forEach(function(t, idx){
-        var label = t.name + (t.leagueName && (comp.id==="ucl"||comp.id==="uel") ? " ("+t.leagueName+")" : "");
-        sel.appendChild(el("option", {value:idx}, label));
-      });
-    });
-    homeSel.value = homeIdx; awaySel.value = awayIdx;
-    document.getElementById("freePickGo").onclick = function(){
-      var h = pool[Number(homeSel.value)], a = pool[Number(awaySel.value)];
-      window.location.href = matchUrl(comp.id, { home:h.name, away:a.name });
-    };
-    homeSel.onchange = awaySel.onchange = document.getElementById("freePickGo").onclick;
-    document.getElementById("swapBtn").onclick = function(){
-      window.location.href = matchUrl(comp.id, { home: current.awayTeam.name, away: current.homeTeam.name });
-    };
-
-    var row = document.getElementById("rivalryRow");
-    row.innerHTML = "";
-    var pairs = E.RIVALRIES[comp.id] || [];
-    if(pairs.length){
-      row.appendChild(el("span", {"class":"r-label"}, "Example matchups"));
-      pairs.forEach(function(pair){
-        var chip = el("a", {"class":"rivalry-chip", "href": matchUrl(comp.id, {home:pair[0], away:pair[1]})}, pair[0]+" v "+pair[1]);
-        row.appendChild(chip);
-      });
-    }
   }
 
   // ---------- Referee ----------
@@ -235,33 +176,35 @@
   // ---------- Premium tabs ----------
   function renderResultTab(model){
     var r = document.getElementById("mrResult"); r.innerHTML = "";
-    r.appendChild(miniRow(model.home.name+" win", pct(model.homeWin)));
-    r.appendChild(miniRow("Draw", pct(model.draw)));
-    r.appendChild(miniRow(model.away.name+" win", pct(model.awayWin)));
+    r.appendChild(miniRow(model.home.name+" win", pct(model.homeWin), null, "home", model.homeWin));
+    r.appendChild(miniRow("Draw", pct(model.draw), null, "draw", model.draw));
+    r.appendChild(miniRow(model.away.name+" win", pct(model.awayWin), null, "away", model.awayWin));
 
     var d = document.getElementById("mrDouble"); d.innerHTML = "";
-    d.appendChild(miniRow(model.home.name+" or Draw", pct(model.dcHD), "Double chance 1X"));
-    d.appendChild(miniRow(model.away.name+" or Draw", pct(model.dcAD), "Double chance X2"));
-    d.appendChild(miniRow(model.home.name+" or "+model.away.name, pct(model.dcHA), "Double chance 12"));
-    d.appendChild(miniRow("Draw no bet — "+model.home.name, pct(model.dnbHome)));
-    d.appendChild(miniRow("Draw no bet — "+model.away.name, pct(model.dnbAway)));
+    d.appendChild(miniRow(model.home.name+" or Draw", pct(model.dcHD), "Double chance 1X", "dc1x", model.dcHD));
+    d.appendChild(miniRow(model.away.name+" or Draw", pct(model.dcAD), "Double chance X2", "dc2x", model.dcAD));
+    d.appendChild(miniRow(model.home.name+" or "+model.away.name, pct(model.dcHA), "Double chance 12", "dc12", model.dcHA));
+    d.appendChild(miniRow("Draw no bet — "+model.home.name, pct(model.dnbHome), null, "dnbHome", model.dnbHome));
+    d.appendChild(miniRow("Draw no bet — "+model.away.name, pct(model.dnbAway), null, "dnbAway", model.dnbAway));
   }
 
   function renderGoalsTab(model){
     var g = document.getElementById("mrGoals"); g.innerHTML = "";
-    E.GOAL_LINES.forEach(function(L){ g.appendChild(miniRow("Over "+L+" goals", pct(model.goalOver[L]))); });
+    E.GOAL_LINES.forEach(function(L){
+      g.appendChild(miniRow("Over "+L+" goals", pct(model.goalOver[L]), null, "over"+L, model.goalOver[L]));
+    });
 
     var b = document.getElementById("mrBtts"); b.innerHTML = "";
-    b.appendChild(miniRow("Yes", pct(model.btts)));
-    b.appendChild(miniRow("No", pct(model.bttsNo)));
+    b.appendChild(miniRow("Yes", pct(model.btts), null, "bttsYes", model.btts, "Both teams to score — Yes"));
+    b.appendChild(miniRow("No", pct(model.bttsNo), null, "bttsNo", model.bttsNo, "Both teams to score — No"));
 
     var t = document.getElementById("mrTeamGoals"); t.innerHTML = "";
-    t.appendChild(miniRow(model.home.name+" over 1.5 goals", pct(model.teamOverHome)));
-    t.appendChild(miniRow(model.away.name+" over 1.5 goals", pct(model.teamOverAway)));
-    t.appendChild(miniRow(model.home.name+" clean sheet", pct(model.cleanSheetHome)));
-    t.appendChild(miniRow(model.away.name+" clean sheet", pct(model.cleanSheetAway)));
-    t.appendChild(miniRow(model.home.name+" to win to nil", pct(model.winNilHome)));
-    t.appendChild(miniRow(model.away.name+" to win to nil", pct(model.winNilAway)));
+    t.appendChild(miniRow(model.home.name+" over 1.5 goals", pct(model.teamOverHome), null, "teamOverHome", model.teamOverHome));
+    t.appendChild(miniRow(model.away.name+" over 1.5 goals", pct(model.teamOverAway), null, "teamOverAway", model.teamOverAway));
+    t.appendChild(miniRow(model.home.name+" clean sheet", pct(model.cleanSheetHome), null, "csHome", model.cleanSheetHome));
+    t.appendChild(miniRow(model.away.name+" clean sheet", pct(model.cleanSheetAway), null, "csAway", model.cleanSheetAway));
+    t.appendChild(miniRow(model.home.name+" to win to nil", pct(model.winNilHome), null, "winNilHome", model.winNilHome));
+    t.appendChild(miniRow(model.away.name+" to win to nil", pct(model.winNilAway), null, "winNilAway", model.winNilAway));
   }
 
   function heatColor(t, lo, hi){
@@ -283,27 +226,38 @@
         '<span class="sc">'+s.h+'–'+s.a+'</span>' +
         '<span class="bar"><i style="width:'+Math.round((s.p/maxP)*100)+'%"></i></span>' +
         '<span class="p">'+pct(s.p)+'</span>';
+      pickable(li, "score_"+s.h+"-"+s.a, "Correct score "+s.h+"-"+s.a, s.p);
       list.appendChild(li);
     });
     var otherLi = el("li", {});
     otherLi.innerHTML = '<span class="rank"></span><span class="sc" style="width:auto;">Any other</span><span class="bar"></span><span class="p">'+pct(model.anyOther)+'</span>';
+    pickable(otherLi, "score_other", "Any other correct score", model.anyOther);
     list.appendChild(otherLi);
 
     var table = document.getElementById("htftTable");
+    table.innerHTML = "";
     var rows = ["H","D","A"];
     var labels = { H:model.home.name, D:"Draw", A:model.away.name };
-    var html = '<thead><tr><th>HT \\ FT</th><th class="center">'+labels.H+'</th><th class="center">'+labels.D+'</th><th class="center">'+labels.A+'</th></tr></thead><tbody>';
+    var thead = el("thead", {});
+    var headTr = el("tr", {});
+    headTr.appendChild(el("th", {}, "HT \\ FT"));
+    rows.forEach(function(ft){ headTr.appendChild(el("th", {"class":"center"}, labels[ft])); });
+    thead.appendChild(headTr);
+    table.appendChild(thead);
+    var tbody = el("tbody", {});
     rows.forEach(function(ht){
-      html += '<tr><td>'+labels[ht]+'</td>';
+      var tr = el("tr", {});
+      tr.appendChild(el("td", {}, labels[ht]));
       rows.forEach(function(ft){
         var v = model.htft[ht+ft];
-        var hi = ht===ft ? ' hi' : '';
-        html += '<td class="center'+hi+'">'+pct(v)+'</td>';
+        var isDiag = ht===ft;
+        var td = el("td", {"class":"center"+(isDiag?" hi":"")}, pct(v));
+        pickable(td, "htft_"+ht+ft, "HT/FT "+labels[ht]+" / "+labels[ft], v);
+        tr.appendChild(td);
       });
-      html += '</tr>';
+      tbody.appendChild(tr);
     });
-    html += '</tbody>';
-    table.innerHTML = html;
+    table.appendChild(tbody);
 
     var styles = getComputedStyle(document.documentElement);
     var lo = styles.getPropertyValue("--heat-lo").trim() || "#16241A";
@@ -324,6 +278,10 @@
         cell.style.background = c.bg;
         cell.style.color = c.text;
         cell.textContent = Math.round(model.grid[i][j]*100);
+        // Same key scheme as the correct-score list above: the grid is just
+        // every scoreline (the list is only the top few), so the same
+        // scoreline picked in either widget shows as picked in both.
+        pickable(cell, "score_"+i+"-"+j, "Correct score "+i+"-"+j, model.grid[i][j]);
         hm.appendChild(cell);
       }
     }
@@ -331,37 +289,50 @@
 
   function renderHandicapTab(model){
     var table = document.getElementById("hcapTable");
-    var html = '<thead><tr><th>Line</th><th class="pct">Win</th><th class="pct">Push</th></tr></thead><tbody>';
+    table.innerHTML = "";
+    var thead = el("thead", {});
+    var headTr = el("tr", {});
+    headTr.appendChild(el("th", {}, "Line"));
+    headTr.appendChild(el("th", {"class":"pct"}, "Win"));
+    headTr.appendChild(el("th", {"class":"pct"}, "Push"));
+    thead.appendChild(headTr);
+    table.appendChild(thead);
+    var tbody = el("tbody", {});
     model.hcap.forEach(function(h){
       var label = "Home "+(h.line>0?"+":"")+h.line;
-      html += '<tr><td>'+label+'</td><td class="pct">'+pct(h.win)+'</td><td class="pct">'+(h.push>0?pct(h.push):'—')+'</td></tr>';
+      var tr = el("tr", {});
+      tr.appendChild(el("td", {}, label));
+      var winTd = el("td", {"class":"pct"}, pct(h.win));
+      pickable(winTd, "hcap_"+h.line, label+" win", h.win);
+      tr.appendChild(winTd);
+      tr.appendChild(el("td", {"class":"pct"}, h.push>0?pct(h.push):"—"));
+      tbody.appendChild(tr);
     });
-    html += '</tbody>';
-    table.innerHTML = html;
+    table.appendChild(tbody);
   }
 
   function renderCardsTab(model){
     document.getElementById("cardsNote").textContent =
       "Combined match total with the selected referee applied — "+model.home.name+" "+model.homeCardsLambda.toFixed(1)+" vs "+model.away.name+" "+model.awayCardsLambda.toFixed(1)+" cards/game baseline.";
-    tilesFromLines(document.getElementById("cardsTiles"), "Cards", model.cardLines);
+    tilesFromLines(document.getElementById("cardsTiles"), "Cards", model.cardLines, "cards");
   }
 
   function renderCornersShotsTab(model){
-    tilesFromLines(document.getElementById("cornersTiles"), "Corners", model.corners.combinedLines);
+    tilesFromLines(document.getElementById("cornersTiles"), "Corners", model.corners.combinedLines, "corners");
     document.getElementById("cornersHomeLabel").textContent = "Corners — "+model.home.name;
     document.getElementById("cornersAwayLabel").textContent = "Corners — "+model.away.name;
-    tilesFromLines(document.getElementById("cornersHomeTiles"), "Corners", model.corners.homeLines);
-    tilesFromLines(document.getElementById("cornersAwayTiles"), "Corners", model.corners.awayLines);
+    tilesFromLines(document.getElementById("cornersHomeTiles"), "Corners", model.corners.homeLines, "cornersHome");
+    tilesFromLines(document.getElementById("cornersAwayTiles"), "Corners", model.corners.awayLines, "cornersAway");
 
     document.getElementById("sotHomeLabel").textContent = "Shots on target — "+model.home.name;
     document.getElementById("sotAwayLabel").textContent = "Shots on target — "+model.away.name;
-    tilesFromLines(document.getElementById("sotHomeTiles"), "SOT", model.sot.homeLines);
-    tilesFromLines(document.getElementById("sotAwayTiles"), "SOT", model.sot.awayLines);
+    tilesFromLines(document.getElementById("sotHomeTiles"), "SOT", model.sot.homeLines, "sotHome");
+    tilesFromLines(document.getElementById("sotAwayTiles"), "SOT", model.sot.awayLines, "sotAway");
 
     document.getElementById("savesHomeLabel").textContent = model.home.name+" goalkeeper saves";
     document.getElementById("savesAwayLabel").textContent = model.away.name+" goalkeeper saves";
-    tilesFromLines(document.getElementById("savesHomeTiles"), "Saves", model.saves.homeLines);
-    tilesFromLines(document.getElementById("savesAwayTiles"), "Saves", model.saves.awayLines);
+    tilesFromLines(document.getElementById("savesHomeTiles"), "Saves", model.saves.homeLines, "savesHome");
+    tilesFromLines(document.getElementById("savesAwayTiles"), "Saves", model.saves.awayLines, "savesAway");
   }
 
   function renderPlayersTab(model){
@@ -369,16 +340,38 @@
     body.innerHTML = "";
     model.players.forEach(function(p){
       var tr = el("tr", {});
-      tr.innerHTML =
-        '<td><span class="player-name">'+p.name+'</span> <span class="pos-tag '+p.pos.toLowerCase()+'">'+p.pos+'</span></td>' +
-        '<td>'+p.team+'</td>' +
-        '<td class="pct">'+pct(p.toScoreP)+'</td>' +
-        '<td class="pct">'+pct(p.assistP)+'</td>' +
-        '<td class="pct">'+pct(p.sotP)+'</td>' +
-        '<td class="pct">'+pct(p.bookedP)+'</td>' +
-        '<td class="pct">'+pct(p.foulsP)+'</td>' +
-        '<td class="pct">'+pct(p.fouledP)+'</td>' +
-        '<td class="pct">'+(p.savesP!=null ? pct(p.savesP) : '—')+'</td>';
+      var pKey = p.name.replace(/\s+/g,"_");
+      tr.appendChild(el("td", {}, '<span class="player-name">'+p.name+'</span> <span class="pos-tag '+p.pos.toLowerCase()+'">'+p.pos+'</span>'));
+      tr.appendChild(el("td", {}, p.team));
+
+      var scoreTd = el("td", {"class":"pct"}, pct(p.toScoreP));
+      pickable(scoreTd, "player_"+pKey+"_score", p.name+" to score", p.toScoreP);
+      tr.appendChild(scoreTd);
+
+      var assistTd = el("td", {"class":"pct"}, pct(p.assistP));
+      pickable(assistTd, "player_"+pKey+"_assist", p.name+" to assist", p.assistP);
+      tr.appendChild(assistTd);
+
+      var sotTd = el("td", {"class":"pct"}, pct(p.sotP));
+      pickable(sotTd, "player_"+pKey+"_sot", p.name+" 2+ shots on target", p.sotP);
+      tr.appendChild(sotTd);
+
+      var bookedTd = el("td", {"class":"pct"}, pct(p.bookedP));
+      pickable(bookedTd, "player_"+pKey+"_booked", p.name+" to be booked", p.bookedP);
+      tr.appendChild(bookedTd);
+
+      var foulsTd = el("td", {"class":"pct"}, pct(p.foulsP));
+      pickable(foulsTd, "player_"+pKey+"_fouls", p.name+" 2+ fouls committed", p.foulsP);
+      tr.appendChild(foulsTd);
+
+      var fouledTd = el("td", {"class":"pct"}, pct(p.fouledP));
+      pickable(fouledTd, "player_"+pKey+"_fouled", p.name+" to be fouled", p.fouledP);
+      tr.appendChild(fouledTd);
+
+      var savesTd = el("td", {"class":"pct"}, p.savesP!=null ? pct(p.savesP) : "—");
+      if(p.savesP!=null) pickable(savesTd, "player_"+pKey+"_saves", p.name+" 2+ saves", p.savesP);
+      tr.appendChild(savesTd);
+
       body.appendChild(tr);
     });
   }
@@ -410,48 +403,22 @@
     renderPlayersTab(model);
   }
 
-  // ---------- Acca ----------
-  function renderAcca(model, matchInfo){
-    var addRow = document.getElementById("accaMarkets");
+  // ---------- Acca hint / played notice ----------
+  // The quick-add row is gone — every market value rendered above is itself
+  // the add control (see pickable()). This just sets the intro line above
+  // the slip and, for an already-played match, explains why nothing above
+  // is clickable.
+  function renderAccaHint(matchInfo){
     var label = document.getElementById("accaCurrentLabel");
     var playedNotice = document.getElementById("accaPlayedNotice");
-
     if(matchInfo && matchInfo.played){
-      addRow.innerHTML = "";
       label.textContent = "This match has been played";
       playedNotice.textContent = "Pick an upcoming fixture to add legs to your accumulator — your existing slip is unaffected.";
       playedNotice.classList.add("show");
-      return;
+    } else {
+      label.textContent = "Tap any value in Every Market above to add it to your slip";
+      playedNotice.classList.remove("show");
     }
-    playedNotice.classList.remove("show");
-
-    label.textContent = "Add from " + model.home.name + " v " + model.away.name + " (" + comp.label + ")";
-    addRow.innerHTML = "";
-    var c45 = model.cardLines.filter(function(c){ return c.line===4.5; })[0];
-    var corners95 = model.corners.combinedLines.filter(function(c){ return c.line===9.5; })[0];
-    var topScorer = model.players.slice().sort(function(a,b){ return b.toScoreP-a.toScoreP; })[0];
-    var matchKey = comp.id+"|"+(matchInfo?matchInfo.date:"free")+"|"+model.home.name+"|"+model.away.name;
-    var markets = [
-      { key:"home", prob:model.homeWin, label:model.home.name+" win" },
-      { key:"away", prob:model.awayWin, label:model.away.name+" win" },
-      { key:"dc1x", prob:model.dcHD, label:model.home.name+" or draw" },
-      { key:"over25", prob:model.goalOver[2.5], label:"Over 2.5 goals" },
-      { key:"btts", prob:model.btts, label:"BTTS yes" },
-      { key:"cardsU45", prob:1-c45.over, label:"Under 4.5 cards" },
-      { key:"corners95", prob:corners95.over, label:"Over 9.5 corners" },
-      { key:"scorer", prob:topScorer.toScoreP, label:topScorer.name+" to score" }
-    ];
-    markets.forEach(function(m){
-      var legKey = matchKey+"|"+m.key;
-      var added = ACCA.hasLeg(legKey);
-      var btn = el("button", {"class":"market-btn", "aria-pressed": String(added), "data-leg": legKey});
-      btn.innerHTML = m.label+' <span class="p mono">'+pct(m.prob)+'</span>';
-      btn.addEventListener("click", function(){
-        ACCA.toggleLeg({ key:legKey, label:model.home.name+" v "+model.away.name+" — "+m.label, prob:m.prob, matchKey:matchKey });
-        renderAcca(model, matchInfo);
-      });
-      addRow.appendChild(btn);
-    });
   }
 
   function renderTierUI(){
@@ -467,21 +434,19 @@
     ACCA.renderSlip(document.getElementById("slipBar"), { compact:true });
   }
 
-  var currentModel = null, currentMatchInfo = null;
-
   function renderAll(){
-    renderCompSelect();
     var resolved = resolveMatch();
-    if(comp.type==="league") renderMatchList(resolved); else renderTeamPick(resolved);
 
     var ref = renderRefSelect();
     var avgGoals = E.avgGoalsFor(comp);
     var model = E.buildModel(resolved.homeTeam, resolved.awayTeam, ref.mult, avgGoals, comp.type==="euro");
     currentModel = model; currentMatchInfo = resolved.matchInfo;
+    matchKey = comp.id+"|"+(resolved.matchInfo?resolved.matchInfo.date:"free")+"|"+model.home.name+"|"+model.away.name;
+    matchPlayable = !(resolved.matchInfo && resolved.matchInfo.played);
 
     renderFree(model, resolved.matchInfo);
     renderPremium(model);
-    renderAcca(model, resolved.matchInfo);
+    renderAccaHint(resolved.matchInfo);
     renderTierUI();
     renderSlips();
   }
@@ -491,7 +456,7 @@
   });
   ACCA.onChange(function(){
     renderSlips();
-    if(currentModel) renderAcca(currentModel, currentMatchInfo);
+    refreshPicked();
   });
 
   renderAll();

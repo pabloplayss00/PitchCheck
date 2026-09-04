@@ -5,8 +5,10 @@ A football probability calculator, as a real multi-page site: browse fixtures on
 (`match.html?comp=...`) with the full report and every market — 1X2, double chance,
 handicaps, goal lines, BTTS, correct score, half-time/full-time, cards, corners, shots on
 target, goalkeeper saves, and a real-squad Player Watch (score/assist/shots/booked/
-fouls/fouled/saves per real player) — plus an accumulator builder. Legs you add on one
-match's page follow you to any other match and back to the hub, via a persistent slip bar.
+fouls/fouled/saves per real player). Every value shown is itself an accumulator control —
+tap any row, tile or table cell across Every Market to add or remove that leg, no separate
+picker required. Legs you add on one match's page follow you to any other match and back
+to the hub, via a persistent slip bar.
 
 It's a plain static site — no build step, no framework, no real server required for the
 pages themselves. The files:
