@@ -13,6 +13,18 @@
  *   - date: "YYYY-MM-DD"
  *   - homeGoals/awayGoals: numbers if played, null if not yet played
  *   - kickoff: "HH:MM" 24h, shown only for unplayed matches (may be omitted)
+ *
+ * ROSTERS holds each club's real, currently-registered key first-team
+ * players by position (GK/DEF/MID/FWD), most-prominent player listed
+ * first per position. The 'By Role' market splits a team's modelled
+ * goal/card totals across these real names by position share, NOT from
+ * per-player statistics — treat individual to-score/booked percentages
+ * as estimates, not licensed prop odds. Squads drift as transfers and
+ * injuries happen; refresh periodically the same way as MATCHES.
+ *
+ * REFEREES_BY_LEAGUE holds real, currently-active referees per league
+ * with a sourced cards-per-game (cpg) figure and a derived multiplier
+ * (mult) relative to that league's own referee-pool average.
  */
 (function (global) {
   "use strict";
@@ -349,6 +361,164 @@
     ]
   };
 
+
+var ROSTERS = {
+"Arsenal": [["David Raya","GK"],["William Saliba","DEF"],["Gabriel Magalhães","DEF"],["Jurriën Timber","DEF"],["Riccardo Calafiori","DEF"],["Declan Rice","MID"],["Martín Zubimendi","MID"],["Bruno Guimarães","MID"],["Bukayo Saka","FWD"],["Viktor Gyökeres","FWD"],["Kai Havertz","FWD"]],
+"Manchester City": [["Gianluigi Donnarumma","GK"],["Rúben Dias","DEF"],["Joško Gvardiol","DEF"],["Abdukodir Khusanov","DEF"],["Nico O'Reilly","DEF"],["Phil Foden","MID"],["Enzo Fernández","MID"],["Mateo Kovačić","MID"],["Erling Haaland","FWD"],["Jeremy Doku","FWD"],["Rayan Cherki","FWD"]],
+"Manchester United": [["Senne Lammens","GK"],["Lisandro Martínez","DEF"],["Diogo Dalot","DEF"],["Noussair Mazraoui","DEF"],["Leny Yoro","DEF"],["Bruno Fernandes","MID"],["Kobbie Mainoo","MID"],["Amad Diallo","MID"],["Bryan Mbeumo","FWD"],["Matheus Cunha","FWD"],["Benjamin Šeško","FWD"]],
+"Aston Villa": [["Zion Suzuki","GK"],["Matty Cash","DEF"],["Pau Torres","DEF"],["Ian Maatsen","DEF"],["Tyrone Mings","DEF"],["John McGinn","MID"],["Boubacar Kamara","MID"],["Leon Goretzka","MID"],["Nicolas Jackson","FWD"],["Emiliano Buendía","FWD"],["Alejandro Garnacho","FWD"]],
+"Liverpool": [["Alisson Becker","GK"],["Virgil van Dijk","DEF"],["Milos Kerkez","DEF"],["Jeremie Frimpong","DEF"],["Joe Gomez","DEF"],["Florian Wirtz","MID"],["Dominik Szoboszlai","MID"],["Alexis Mac Allister","MID"],["Alexander Isak","FWD"],["Hugo Ekitike","FWD"],["Cody Gakpo","FWD"]],
+"Chelsea": [["Robert Sánchez","GK"],["Reece James","DEF"],["Levi Colwill","DEF"],["Jorrel Hato","DEF"],["Malo Gusto","DEF"],["Cole Palmer","MID"],["Enzo Fernández","MID"],["Moisés Caicedo","MID"],["João Pedro","FWD"],["Pedro Neto","FWD"],["Liam Delap","FWD"]],
+"Brentford": [["Caoimhín Kelleher","GK"],["Nathan Collins","DEF"],["Keane Lewis-Potter","DEF"],["Kristoffer Ajer","DEF"],["Rico Henry","DEF"],["Mathias Jensen","MID"],["Mikkel Damsgaard","MID"],["Yehor Yarmoliuk","MID"],["Igor Thiago","FWD"],["Kevin Schade","FWD"],["Dango Ouattara","FWD"]],
+"Everton": [["Jordan Pickford","GK"],["James Tarkowski","DEF"],["Jarrad Branthwaite","DEF"],["Vitaliy Mykolenko","DEF"],["Michael Keane","DEF"],["James Garner","MID"],["Kiernan Dewsbury-Hall","MID"],["Carlos Alcaraz","MID"],["Iliman Ndiaye","FWD"],["Thierno Barry","FWD"],["Beto","FWD"]],
+"Fulham": [["Bernd Leno","GK"],["Joachim Andersen","DEF"],["Calvin Bassey","DEF"],["Antonee Robinson","DEF"],["Timothy Castagne","DEF"],["Sander Berge","MID"],["Alex Iwobi","MID"],["Harrison Reed","MID"],["Rodrigo Muniz","FWD"],["Emile Smith Rowe","FWD"],["Oscar Bobb","FWD"]],
+"Bournemouth": [["Djordje Petrović","GK"],["Adrien Truffert","DEF"],["Bafodé Diakité","DEF"],["Antonio Silva","DEF"],["James Hill","DEF"],["Alex Scott","MID"],["Marcus Tavernier","MID"],["Lewis Cook","MID"],["Evanilson","FWD"],["Justin Kluivert","FWD"],["David Brooks","FWD"]],
+"Brighton": [["Bart Verbruggen","GK"],["Lewis Dunk","DEF"],["Mats Wieffer","DEF"],["Pascal Struijk","DEF"],["Ferdi Kadıoğlu","DEF"],["Pascal Groß","MID"],["Jack Hinshelwood","MID"],["Yasin Ayari","MID"],["Kaoru Mitoma","FWD"],["Georginio Rutter","FWD"],["Yankuba Minteh","FWD"]],
+"Sunderland": [["Anthony Patterson","GK"],["Dennis Cirkin","DEF"],["Daniel Ballard","DEF"],["Luke O'Nien","DEF"],["Trai Hume","DEF"],["Dan Neil","MID"],["Chris Rigg","MID"],["Patrick Roberts","MID"],["Wilson Isidor","FWD"],["Eliezer Mayenda","FWD"],["Romaine Mundle","FWD"]],
+"Newcastle United": [["Nick Pope","GK"],["Kieran Trippier","DEF"],["Fabian Schär","DEF"],["Sven Botman","DEF"],["Tino Livramento","DEF"],["Joelinton","MID"],["Anthony Gordon","MID"],["Sean Longstaff","MID"],["Yoane Wissa","FWD"],["Anthony Elanga","FWD"],["William Osula","FWD"]],
+"Crystal Palace": [["Dean Henderson","GK"],["Daniel Muñoz","DEF"],["Tyrick Mitchell","DEF"],["Chris Richards","DEF"],["Chadi Riad","DEF"],["Adam Wharton","MID"],["Cheick Doucouré","MID"],["Daichi Kamada","MID"],["Jean-Philippe Mateta","FWD"],["Ismaïla Sarr","FWD"],["Eddie Nketiah","FWD"]],
+"Leeds United": [["Lucas Perri","GK"],["Ethan Ampadu","DEF"],["Joe Rodon","DEF"],["Jayden Bogle","DEF"],["Sebastiaan Bornauw","DEF"],["Ilia Gruev","MID"],["Ao Tanaka","MID"],["Brenden Aaronson","MID"],["Joel Piroe","FWD"],["Largie Ramazani","FWD"],["Daniel James","FWD"]],
+"Tottenham Hotspur": [["Antonín Kinský","GK"],["Pedro Porro","DEF"],["Micky van de Ven","DEF"],["Destiny Udogie","DEF"],["Marcos Senesi","DEF"],["Sandro Tonali","MID"],["James Maddison","MID"],["Rodrigo Bentancur","MID"],["Dominic Solanke","FWD"],["Mohammed Kudus","FWD"],["Richarlison","FWD"]],
+"Nottingham Forest": [["Matz Sels","GK"],["Murillo","DEF"],["Ola Aina","DEF"],["Neco Williams","DEF"],["Nikola Milenković","DEF"],["Morgan Gibbs-White","MID"],["Oleksandr Zinchenko","MID"],["Ibrahim Sangaré","MID"],["Chris Wood","FWD"],["Callum Hudson-Odoi","FWD"],["Taiwo Awoniyi","FWD"]],
+"Coventry City": [["Ben Wilson","GK"],["Liam Kitching","DEF"],["Luis Binks","DEF"],["Milan van Ewijk","DEF"],["Jake Bidwell","DEF"],["Ben Sheaf","MID"],["Josh Eccles","MID"],["Tatsuhiro Sakamoto","MID"],["Haji Wright","FWD"],["Ellis Simms","FWD"],["Ephron Mason-Clark","FWD"]],
+"Ipswich Town": [["Aro Muric","GK"],["Leif Davis","DEF"],["Jacob Greaves","DEF"],["Cameron Burgess","DEF"],["Axel Tuanzebe","DEF"],["Sam Morsy","MID"],["Jens Cajuste","MID"],["Massimo Luongo","MID"],["Omari Hutchinson","FWD"],["George Hirst","FWD"],["Nathan Broadhead","FWD"]],
+"Hull City": [["Ivor Pandur","GK"],["Sean McLoughlin","DEF"],["Alfie Jones","DEF"],["Charlie Hughes","DEF"],["Ryan Giles","DEF"],["Jean Michaël Seri","MID"],["Regan Slater","MID"],["Xavier Simons","MID"],["Liam Millar","FWD"],["Noah Ohio","FWD"],["Ben Jackson","FWD"]],
+
+"Barcelona": [["Joan García","GK"],["Jules Koundé","DEF"],["Pau Cubarsí","DEF"],["Alejandro Balde","DEF"],["Andreas Christensen","DEF"],["Pedri","MID"],["Rodri","MID"],["Frenkie de Jong","MID"],["Lamine Yamal","FWD"],["Raphinha","FWD"],["Gabriel Jesus","FWD"]],
+"Real Madrid": [["Thibaut Courtois","GK"],["Éder Militão","DEF"],["Antonio Rüdiger","DEF"],["Ibrahima Konaté","DEF"],["Marc Cucurella","DEF"],["Jude Bellingham","MID"],["Federico Valverde","MID"],["Aurélien Tchouaméni","MID"],["Bernardo Silva","MID"],["Kylian Mbappé","FWD"],["Vinícius Júnior","FWD"]],
+"Villarreal": [["Péter Gulácsi","GK"],["Juan Foyth","DEF"],["Logan Costa","DEF"],["Renato Veiga","DEF"],["Sergi Cardona","DEF"],["Pape Gueye","MID"],["Santi Comesaña","MID"],["Alberto Moleiro","MID"],["Georges Mikautadze","FWD"],["Gerard Moreno","FWD"],["Ayoze Pérez","FWD"]],
+"Atlético Madrid": [["Jan Oblak","GK"],["José María Giménez","DEF"],["Robin Le Normand","DEF"],["Nahuel Molina","DEF"],["Javi Galán","DEF"],["Rodrigo De Paul","MID"],["Koke","MID"],["Pablo Barrios","MID"],["Julián Álvarez","FWD"],["Antoine Griezmann","FWD"],["Alexander Sørloth","FWD"]],
+"Real Betis": [["Álvaro Valles","GK"],["Héctor Bellerín","DEF"],["Marc Bartra","DEF"],["Diego Llorente","DEF"],["Chadi Riad","DEF"],["Johnny Cardoso","MID"],["Isco","MID"],["Marc Roca","MID"],["Cucho Hernández","FWD"],["Antony","FWD"],["Ez Abde","FWD"]],
+"Celta Vigo": [["Vicente Guaita","GK"],["Óscar Mingueza","DEF"],["Carl Starfelt","DEF"],["Javi Rodríguez","DEF"],["Yoel Lago","DEF"],["Fer López","MID"],["Damián Rodríguez","MID"],["Hugo Sotelo","MID"],["Iago Aspas","FWD"],["Borja Iglesias","FWD"],["Williot Swedberg","FWD"]],
+"Getafe": [["David Soria","GK"],["Domingos Duarte","DEF"],["Djené Dakonam","DEF"],["Juan Iglesias","DEF"],["Diego Rico","DEF"],["Mauro Arambarri","MID"],["Luis Milla","MID"],["Nemanja Maksimović","MID"],["Borja Mayoral","FWD"],["Álvaro Rodríguez","FWD"],["Yellu Santiago","FWD"]],
+"Rayo Vallecano": [["Stole Dimitrievski","GK"],["Abdul Mumin","DEF"],["Florian Lejeune","DEF"],["Iván Balliu","DEF"],["Alfonso Espino","DEF"],["Óscar Trejo","MID"],["Pathé Ciss","MID"],["Isi Palazón","MID"],["Randy Nteka","FWD"],["Álvaro García","FWD"],["Jorge de Frutos","FWD"]],
+"Valencia": [["Julen Agirrezabala","GK"],["José Gayà","DEF"],["Mouctar Diakhaby","DEF"],["César Tárrega","DEF"],["Thierry Correia","DEF"],["Javi Guerra","MID"],["Pepelu","MID"],["Fran Pérez","MID"],["Hugo Duro","FWD"],["Diego López","FWD"],["Rafa Mir","FWD"]],
+"Real Sociedad": [["Álex Remiro","GK"],["Aritz Elustondo","DEF"],["Igor Zubeldia","DEF"],["Jon Aramburu","DEF"],["Aihen Muñoz","DEF"],["Beñat Turrientes","MID"],["Sergio Gómez","MID"],["Arsen Zakharyan","MID"],["Mikel Oyarzabal","FWD"],["Take Kubo","FWD"],["Orri Óskarsson","FWD"]],
+"Espanyol": [["Marko Dmitrović","GK"],["Omar El Hilali","DEF"],["Leandro Cabrera","DEF"],["Loïc Williams","DEF"],["Brian Oliván","DEF"],["Pol Lozano","MID"],["Edu Expósito","MID"],["Álex Kral","MID"],["Javi Puado","FWD"],["Kike García","FWD"],["Roberto Fernández","FWD"]],
+"Athletic Bilbao": [["Unai Simón","GK"],["Dani Vivian","DEF"],["Yeray Álvarez","DEF"],["Óscar de Marcos","DEF"],["Aitor Paredes","DEF"],["Mikel Jauregizar","MID"],["Oihan Sancet","MID"],["Beñat Prados","MID"],["Nico Williams","FWD"],["Iñaki Williams","FWD"],["Gorka Guruzeta","FWD"]],
+"Sevilla": [["Álvaro Fernández","GK"],["Kike Salas","DEF"],["Nemanja Gudelj","DEF"],["José Ángel Carmona","DEF"],["Marcão","DEF"],["Saúl Ñíguez","MID"],["Djibril Sow","MID"],["Lucien Agoumé","MID"],["Isaac Romero","FWD"],["Akor Adams","FWD"],["Dodi Lukébakio","FWD"]],
+"Alavés": [["Antonio Sivera","GK"],["Abdel Abqar","DEF"],["Nahuel Tenaglia","DEF"],["Manu Sánchez","DEF"],["Diego García","DEF"],["Ander Guevara","MID"],["Antonio Blanco","MID"],["Jon Guridi","MID"],["Samu Omorodion","FWD"],["Toni Martínez","FWD"],["Carlos Vicente","FWD"]],
+"Elche": [["Matías Dituro","GK"],["Adrián Butzke","DEF"],["Diego González","DEF"],["Óscar Chust","DEF"],["Álex Sola","DEF"],["Fede Redondo","MID"],["Josan","MID"],["Álvaro Núñez","MID"],["André Silva","FWD"],["Pere Milla","FWD"]],
+"Levante": [["Cárdenas","GK"],["Isaac Carcelén","DEF"],["Iván López","DEF"],["Dani Cárdenas","DEF"],["Vencedor","MID"],["Roberto López","MID"],["Carlos Álvarez","MID"],["Karl Etta Eyong","FWD"],["Iván Romero","FWD"]],
+"Osasuna": [["Sergio Herrera","GK"],["David García","DEF"],["Alejandro Catena","DEF"],["Jesús Areso","DEF"],["Rubén Peña","DEF"],["Moi Gómez","MID"],["Jon Moncayola","MID"],["Rubén García","MID"],["Ante Budimir","FWD"],["Bryan Zaragoza","FWD"],["Jon Karrikaburu","FWD"]],
+"Racing Santander": [["Jokin Ezkieta","GK"],["Manex Lozano","DEF"],["Santi Franco","DEF"],["Kike Márquez","DEF"],["Íñigo Vicente","MID"],["Andrés Martín","MID"],["Javi Castro","MID"],["Jeremy Arévalo","FWD"]],
+"Deportivo La Coruña": [["Aarón Escandell","GK"],["Álex Martínez","DEF"],["Ximo Navarro","DEF"],["Loureiro","DEF"],["Yeremay Hermosa","MID"],["David Mella","MID"],["Mario Soriano","MID"],["Lucas Pérez","FWD"],["Riki Villar","FWD"]],
+"Málaga": [["Rubén Yáñez","GK"],["Einar Galilea","DEF"],["Haitam Aatit","DEF"],["Manu González","DEF"],["Kevin Medina","DEF"],["Roberto López","MID"],["Antonio Sánchez","MID"],["Antonio Puertas","FWD"],["Dioni Villalba","FWD"]],
+
+"Inter Milan": [["Josep Martínez","GK"],["Alessandro Bastoni","DEF"],["Federico Dimarco","DEF"],["Benjamin Pavard","DEF"],["Manuel Akanji","DEF"],["Nicolò Barella","MID"],["Hakan Çalhanoğlu","MID"],["Henrikh Mkhitaryan","MID"],["Lautaro Martínez","FWD"],["Marcus Thuram","FWD"]],
+"AC Milan": [["Mike Maignan","GK"],["Fikayo Tomori","DEF"],["Pervis Estupiñán","DEF"],["Koni De Winter","DEF"],["Strahinja Pavlović","DEF"],["Luka Modrić","MID"],["Adrien Rabiot","MID"],["Ruben Loftus-Cheek","MID"],["Christian Pulišić","FWD"],["Gonçalo Ramos","FWD"],["Samuel Chukwueze","FWD"]],
+"Napoli": [["Alex Meret","GK"],["Giovanni Di Lorenzo","DEF"],["Alessandro Buongiorno","DEF"],["Sam Beukema","DEF"],["Mathías Olivera","DEF"],["Kevin De Bruyne","MID"],["Scott McTominay","MID"],["Frank Anguissa","MID"],["Rasmus Højlund","FWD"],["David Neres","FWD"],["Matteo Politano","FWD"]],
+"Roma": [["Mile Svilar","GK"],["Gianluca Mancini","DEF"],["Evan Ndicka","DEF"],["Nahuel Molina","DEF"],["Wesley","DEF"],["Lorenzo Pellegrini","MID"],["Manu Koné","MID"],["Bryan Cristante","MID"],["Paulo Dybala","FWD"],["Santiago Castro","FWD"],["Matías Soulé","FWD"]],
+"Como": [["Robert Sánchez","GK"],["Trevoh Chalobah","DEF"],["Yan Couto","DEF"],["Willy Kambwala","DEF"],["Álex Valle","DEF"],["Nico Paz","MID"],["Martin Baturina","MID"],["Samuele Ricci","MID"],["Moise Kean","FWD"],["Assane Diao","FWD"],["Jesús Rodríguez","FWD"]],
+"Juventus": [["Guglielmo Vicario","GK"],["Bremer","DEF"],["Pierre Kalulu","DEF"],["Andrea Cambiaso","DEF"],["Juan Cabal","DEF"],["Teun Koopmeiners","MID"],["Khéphren Thuram","MID"],["Weston McKennie","MID"],["Kenan Yıldız","FWD"],["Nick Woltemade","FWD"],["Francisco Conceição","FWD"]],
+"Atalanta": [["Marco Carnesecchi","GK"],["Giorgio Scalvini","DEF"],["Isak Hien","DEF"],["Odilon Kossounou","DEF"],["Davide Zappacosta","DEF"],["Charles De Ketelaere","MID"],["Éderson","MID"],["Raoul Bellanova","MID"],["Gianluca Scamacca","FWD"],["Giacomo Raspadori","FWD"],["Nikola Krstović","FWD"]],
+"Sassuolo": [["Aro Murić","GK"],["Sebastian Walukiewicz","DEF"],["Jay Idzes","DEF"],["Josh Doig","DEF"],["Cas Odenthal","DEF"],["Kristian Thorstvedt","MID"],["Nemanja Matić","MID"],["Daniel Boloca","MID"],["Domenico Berardi","FWD"],["Armand Laurienté","FWD"],["Benjamín Domínguez","FWD"]],
+"Bologna": [["Łukasz Skorupski","GK"],["Nadir Zortea","DEF"],["Juan Miranda","DEF"],["Martin Vitík","DEF"],["Emil Holm","DEF"],["Lewis Ferguson","MID"],["Tommaso Pobega","MID"],["Nikola Moro","MID"],["Riccardo Orsolini","FWD"],["Artem Dovbyk","FWD"],["Jesper Karlsson","FWD"]],
+"Lazio": [["Christos Mandas","GK"],["Alessio Romagnoli","DEF"],["Adam Marušić","DEF"],["Nuno Tavares","DEF"],["Samuel Gigot","DEF"],["Nicolò Rovella","MID"],["Davide Frattesi","MID"],["Danilo Cataldi","MID"],["Mattia Zaccagni","FWD"],["Boulaye Dia","FWD"],["Gustav Isaksen","FWD"]],
+"Parma": [["Giovanni Daffara","GK"],["Enrico Del Prato","DEF"],["Lautaro Valenti","DEF"],["Emanuele Valeri","DEF"],["Diego Carlos","DEF"],["Adrián Bernabé","MID"],["Giovanni Fabbian","MID"],["Hans Nicolussi Caviglia","MID"],["El Bilal Touré","FWD"],["Pontus Almqvist","FWD"],["Matija Frigan","FWD"]],
+"Udinese": [["Maduka Okoye","GK"],["Oumar Solet","DEF"],["Christian Kabasele","DEF"],["Enzo Ebosse","DEF"],["Alessandro Zanoli","DEF"],["Nicolò Zaniolo","MID"],["Sandi Lovrić","MID"],["Lennon Miller","MID"],["Keinan Davis","FWD"],["Vakoun Bayo","FWD"]],
+"Cagliari": [["Elia Caprile","GK"],["Yerry Mina","DEF"],["Yukinari Sugawara","DEF"],["Adam Obert","DEF"],["Juan Rodriguez","DEF"],["Roberto Gagliardini","MID"],["Daniel Maldini","MID"],["Jacopo Fazzini","MID"],["Kevin Carlos","FWD"],["M'Bala Nzola","FWD"],["Gennaro Borrelli","FWD"]],
+"Torino": [["Franco Israel","GK"],["Saúl Coco","DEF"],["Ardian Ismajli","DEF"],["Cristiano Biraghi","DEF"],["Pietro Comuzzo","DEF"],["Nikola Vlašić","MID"],["Rolando Mandragora","MID"],["Cesare Casadei","MID"],["Duván Zapata","FWD"],["Giovanni Simeone","FWD"],["Zakaria Aboukhlal","FWD"]],
+"Genoa": [["Justin Bijlow","GK"],["Johan Vásquez","DEF"],["Aarón Martín","DEF"],["Leo Østigård","DEF"],["Stefano Sabelli","DEF"],["Morten Frendrup","MID"],["Djibril Sow","MID"],["Tommaso Baldanzi","MID"],["Vitinha","FWD"],["Lorenzo Colombo","FWD"],["Junior Messias","FWD"]],
+"Fiorentina": [["David de Gea","GK"],["Dodô","DEF"],["Luca Ranieri","DEF"],["Marin Pongračić","DEF"],["Fabiano Parisi","DEF"],["Franco Mastantuono","MID"],["Nicolò Fagioli","MID"],["Marco Brescianini","MID"],["Beto","FWD"],["Riccardo Sottil","FWD"],["Pedro Gonçalves","FWD"]],
+"Lecce": [["Wladimiro Falcone","GK"],["Antonino Gallo","DEF"],["Kialonda Gaspar","DEF"],["Tiago Gabriel","DEF"],["Danilo Veiga","DEF"],["Ivan Ilić","MID"],["Lassana Coulibaly","MID"],["Medon Berisha","MID"],["Nikola Štulić","FWD"],["Lameck Banda","FWD"],["Santiago Pierotti","FWD"]],
+"Venezia": [["Filip Stanković","GK"],["Juan Jesus","DEF"],["Pasquale Mazzocchi","DEF"],["Joël Schingtienne","DEF"],["Ridgeciano Haps","DEF"],["Gianluca Busio","MID"],["Simon Sohm","MID"],["Toma Bašić","MID"],["John Yeboah","FWD"],["Akor Adams","FWD"],["Andrea Adorante","FWD"]],
+"Frosinone": [["Matteo Pisseri","GK"],["Kevin Akpoguma","DEF"],["Aleksa Terzić","DEF"],["Ilario Monterisi","DEF"],["Giorgio Cittadini","DEF"],["Romano Schmid","MID"],["Florian Grillitsch","MID"],["Patrizio Masini","MID"],["Daniel Bîrligea","FWD"],["Giorgi Kvernadze","FWD"],["Antonio Raimondo","FWD"]],
+"Monza": [["Aljaž Strajnar","GK"],["Andrea Carboni","DEF"],["Jan Ziółkowski","DEF"],["Saba Goglichidze","DEF"],["Samuele Birindelli","DEF"],["Matteo Pessina","MID"],["Andrea Colpani","MID"],["Michael Folorunsho","MID"],["Keita Baldé","FWD"],["Patrick Cutrone","FWD"],["Dany Mota","FWD"]],
+
+"Bayern Munich": [["Manuel Neuer","GK"],["Dayot Upamecano","DEF"],["Jonathan Tah","DEF"],["Alphonso Davies","DEF"],["Kim Min-Jae","DEF"],["Joshua Kimmich","MID"],["Jamal Musiala","MID"],["Konrad Laimer","MID"],["Harry Kane","FWD"],["Michael Olise","FWD"],["Luis Díaz","FWD"]],
+"Borussia Dortmund": [["Gregor Kobel","GK"],["Nico Schlotterbeck","DEF"],["Waldemar Anton","DEF"],["Julian Ryerson","DEF"],["Ramy Bensebaïni","DEF"],["Jobe Bellingham","MID"],["Felix Nmecha","MID"],["Emre Can","MID"],["Serhou Guirassy","FWD"],["Maximilian Beier","FWD"],["Fábio Silva","FWD"]],
+"RB Leipzig": [["Maarten Vandevoordt","GK"],["Castello Lukeba","DEF"],["Willi Orbán","DEF"],["David Raum","DEF"],["Benjamin Henrichs","DEF"],["Christoph Baumgartner","MID"],["Assan Ouédraogo","MID"],["Rocco Reitz","MID"],["Antonio Nusa","FWD"],["Christopher Nkunku","FWD"],["Johan Bakayoko","FWD"]],
+"VfB Stuttgart": [["Fabian Bredlow","GK"],["Jeff Chabot","DEF"],["Ramon Hendriks","DEF"],["Josha Vagnoman","DEF"],["Maximilian Mittelstädt","DEF"],["Angelo Stiller","MID"],["Atakan Karazor","MID"],["Bilal El Khannouss","MID"],["Deniz Undav","FWD"],["Ermedin Demirović","FWD"],["Jamie Leweling","FWD"]],
+"TSG Hoffenheim": [["Oliver Baumann","GK"],["Albian Hajdari","DEF"],["Ozan Kabak","DEF"],["Kōki Machida","DEF"],["Valentin Gendrey","DEF"],["Andrej Kramarić","MID"],["Dennis Geiger","MID"],["Wouter Burger","MID"],["Adam Hložek","FWD"],["Fisnik Asllani","FWD"],["Tim Lemperle","FWD"]],
+"Bayer Leverkusen": [["Mark Flekken","GK"],["Edmond Tapsoba","DEF"],["Miguel Gutiérrez","DEF"],["Jarell Quansah","DEF"],["Loïc Badé","DEF"],["Aleix García","MID"],["Exequiel Palacios","MID"],["Robert Andrich","MID"],["Patrik Schick","FWD"],["Victor Boniface","FWD"],["Martin Terrier","FWD"]],
+"SC Freiburg": [["Florian Müller","GK"],["Matthias Ginter","DEF"],["Christian Günter","DEF"],["Philipp Lienhart","DEF"],["Lukas Kübler","DEF"],["Vincenzo Grifo","MID"],["Maximilian Eggestein","MID"],["Patrick Osterhage","MID"],["Lucas Höler","FWD"],["Igor Matanović","FWD"],["Jan-Niklas Beste","FWD"]],
+"Eintracht Frankfurt": [["Noah Atubolu","GK"],["Robin Koch","DEF"],["Arthur Theate","DEF"],["Nnamdi Collins","DEF"],["Lilian Brassier","DEF"],["Mario Götze","MID"],["Can Uzun","MID"],["Farès Chaïbi","MID"],["Jonathan Burkardt","FWD"],["Ritsu Dōan","FWD"],["Ansgar Knauff","FWD"]],
+"FC Augsburg": [["Finn Dahmen","GK"],["Jeffrey Gouweleeuw","DEF"],["Keven Schlotterbeck","DEF"],["Mads Pedersen","DEF"],["Chrislain Matsima","DEF"],["Fabian Rieder","MID"],["Alexis Claude-Maurice","MID"],["Kristijan Jakić","MID"],["Michael Gregoritsch","FWD"],["Rodrigo Ribeiro","FWD"],["Nathanaël Mbuku","FWD"]],
+"Mainz 05": [["Robin Zentner","GK"],["Andreas Hanche-Olsen","DEF"],["Silvan Widmer","DEF"],["Stefan Posch","DEF"],["Anthony Caci","DEF"],["Nadiem Amiri","MID"],["Jae-sung Lee","MID"],["Dominik Kohr","MID"],["Sheraldo Becker","FWD"],["Ransford Königsdörffer","FWD"],["Benedict Hollerbach","FWD"]],
+"Union Berlin": [["Frederik Rønnow","GK"],["Josip Juranović","DEF"],["Leopold Querfeld","DEF"],["Christopher Trimmel","DEF"],["Felix Uduokhai","DEF"],["Rani Khedira","MID"],["András Schäfer","MID"],["Janik Haberer","MID"],["Andrej Ilić","FWD"],["Tim Skarke","FWD"],["Oliver Burke","FWD"]],
+"Borussia Mönchengladbach": [["Moritz Nicolas","GK"],["Kō Itakura","DEF"],["Joe Scally","DEF"],["Kevin Diks","DEF"],["Fabio Chiarodia","DEF"],["Kevin Stöger","MID"],["Florian Neuhaus","MID"],["Jens Castrop","MID"],["Tim Kleindienst","FWD"],["Franck Honorat","FWD"],["Nicolas Kühn","FWD"]],
+"Hamburger SV": [["Daniel Heuer Fernandes","GK"],["Sebastiaan Bornauw","DEF"],["Jordan Torunarigha","DEF"],["Miro Muheim","DEF"],["David Møller Wolfe","DEF"],["Immanuël Pherai","MID"],["Fábio Vieira","MID"],["Albert Grønbæk","MID"],["Patson Daka","FWD"],["Terem Moffi","FWD"],["Yussuf Poulsen","FWD"]],
+"FC Köln": [["Marvin Schwäbe","GK"],["Timo Hübers","DEF"],["Luka Lochoshvili","DEF"],["Borna Sosa","DEF"],["Jahmai Simpson-Pusey","DEF"],["Ellyes Skhiri","MID"],["Jan Thielmann","MID"],["Tom Krauß","MID"],["Luca Waldschmidt","FWD"],["Ragnar Ache","FWD"],["Linton Maina","FWD"]],
+"Werder Bremen": [["Alexander Schlager","GK"],["Marco Friedl","DEF"],["Amos Pieper","DEF"],["Mitchell Weiser","DEF"],["Niklas Stark","DEF"],["Jens Stage","MID"],["Skelly Alvero","MID"],["Senne Lynen","MID"],["Marco Grüll","FWD"],["Justin Njinmah","FWD"],["Eren Dinkçi","FWD"]],
+"SV Elversberg": [["Tim Boss","GK"],["Jan Gyamerah","DEF"],["Lukas Pinckert","DEF"],["Florian Le Joncour","DEF"],["Luca Sirch","DEF"],["Maurice Krattenmacher","MID"],["Amara Condé","MID"],["Francis Onyeka","MID"],["Luca Pfeiffer","FWD"],["David Mokwa","FWD"],["Noel Futkeu","FWD"]],
+"Schalke 04": [["Kevin Müller","GK"],["Max Wöber","DEF"],["Robin Gosens","DEF"],["Nikola Katić","DEF"],["Timo Becker","DEF"],["Éric Dina-Ebimbe","MID"],["Ron Schallenberg","MID"],["Adil Aouchiche","MID"],["Edin Džeko","FWD"],["Bryan Lasme","FWD"],["Kenan Karaman","FWD"]],
+"SC Paderborn": [["Markus Schubert","GK"],["Felix Götze","DEF"],["Jonah Sticker","DEF"],["Tjark Scheller","DEF"],["Niklas Mohr","DEF"],["Sebastian Klaas","MID"],["Raphael Obermair","MID"],["Ruben Müller","MID"],["Sven Michel","FWD"],["Steffen Tigges","FWD"],["Kennedy Okpala","FWD"]],
+
+"Paris Saint-Germain": [["Lucas Chevalier","GK"],["Achraf Hakimi","DEF"],["Marquinhos","DEF"],["Nuno Mendes","DEF"],["Willian Pacho","DEF"],["Vitinha","MID"],["João Neves","MID"],["Fabián Ruiz","MID"],["Ousmane Dembélé","FWD"],["Désiré Doué","FWD"],["Khvicha Kvaratskhelia","FWD"]],
+"RC Lens": [["Robin Risser","GK"],["Jean-Clair Todibo","DEF"],["Jonathan Gradit","DEF"],["Matthieu Udol","DEF"],["Maik Nawrocki","DEF"],["Amadou Haïdara","MID"],["Thorgan Hazard","MID"],["Michaël Cuisance","MID"],["Odsonne Édouard","FWD"],["Florian Thauvin","FWD"],["Florian Sotoca","FWD"]],
+"LOSC Lille": [["Berke Özer","GK"],["Alexsandro","DEF"],["Tiago Santos","DEF"],["Nathan Ngoy","DEF"],["Romain Perraud","DEF"],["Benjamin André","MID"],["Hákon Haraldsson","MID"],["Nabil Bentaleb","MID"],["Olivier Giroud","FWD"],["Hamza Igamane","FWD"],["Dilane Bakwa","FWD"]],
+"Olympique Lyonnais": [["Dominik Greif","GK"],["Nicolás Tagliafico","DEF"],["Moussa Niakhaté","DEF"],["Abner","DEF"],["Clinton Mata","DEF"],["Corentin Tolisso","MID"],["Tyler Morton","MID"],["Pavel Šulc","MID"],["Loïs Openda","FWD"],["Ernest Nuamah","FWD"],["Julien Duranville","FWD"]],
+"Olympique de Marseille": [["Jeffrey de Lange","GK"],["Nayef Aguerd","DEF"],["CJ Egan-Riley","DEF"],["Derek Cornelius","DEF"],["Ulisses Garcia","DEF"],["Pierre-Emile Højbjerg","MID"],["Angel Gomes","MID"],["Amine Harit","MID"],["Pierre-Emerick Aubameyang","FWD"],["Amine Gouiri","FWD"],["Igor Paixão","FWD"]],
+"Stade Rennais": [["Brice Samba","GK"],["Lilian Brassier","DEF"],["Anthony Rouault","DEF"],["Przemysław Frankowski","DEF"],["Quentin Merlin","DEF"],["Seko Fofana","MID"],["Adrien Thomasson","MID"],["Ludovic Blas","MID"],["Breel Embolo","FWD"],["Esteban Lepaul","FWD"],["Mousa Al Tamari","FWD"]],
+"AS Monaco": [["Lukáš Hrádecký","GK"],["Vanderson","DEF"],["Jordan Teze","DEF"],["Mohammed Salisu","DEF"],["Eric Dier","DEF"],["Aleksandr Golovin","MID"],["Denis Zakaria","MID"],["Lamine Camara","MID"],["Folarin Balogun","FWD"],["Ansu Fati","FWD"],["Mika Biereth","FWD"]],
+"RC Strasbourg": [["Filip Jörgensen","GK"],["Ismaël Doukouré","DEF"],["Abakar Sylla","DEF"],["Guela Doué","DEF"],["Andrew Omobamidele","DEF"],["Gio Reyna","MID"],["Sebastian Nanasi","MID"],["Mathis Amougou","MID"],["Joaquín Panichelli","FWD"],["Sékou Mara","FWD"],["Fabio Baldé","FWD"]],
+"Toulouse FC": [["Guillaume Restes","GK"],["Rasmus Nicolaisen","DEF"],["Mark McKenzie","DEF"],["David Odogu","DEF"],["Christ Tapé","DEF"],["Cristian Cásseres Jr.","MID"],["Aron Dønnum","MID"],["Niklas Schmidt","MID"],["Yann-Alexandre Gboho","FWD"],["Ilyas Azizi","FWD"],["Santiago Hidalgo","FWD"]],
+"FC Lorient": [["Yvon Mvogo","GK"],["Montassar Talbi","DEF"],["Isaak Touré","DEF"],["Formose Mendy","DEF"],["Dembo Sylla","DEF"],["Jean-Victor Makengo","MID"],["Théo Le Bris","MID"],["Noah Cadiou","MID"],["Mamadou Koné","FWD"],["Aiyegun Tosin","FWD"],["Souleymane Faye","FWD"]],
+"Paris FC": [["Kevin Trapp","GK"],["Hamari Traoré","DEF"],["Otávio","DEF"],["Thibault De Smet","DEF"],["Moustapha Mbow","DEF"],["Maxime López","MID"],["Pierre Lees-Melou","MID"],["Vincent Marchetti","MID"],["Moses Simon","FWD"],["Jonathan Ikoné","FWD"],["Lassine Sinayoko","FWD"]],
+"Stade Brestois": [["Grégoire Coudert","GK"],["Brendan Chardonnet","DEF"],["Bradley Locko","DEF"],["Kenny Lala","DEF"],["Justin Bourgault","DEF"],["Lucas Tousart","MID"],["Joris Chotard","MID"],["Hugo Magnetti","MID"],["Ludovic Ajorque","FWD"],["Mama Baldé","FWD"],["Romain Del Castillo","FWD"]],
+"Angers SCO": [["Anthony Lopes","GK"],["Jordan Lefort","DEF"],["Joseph Kalulu","DEF"],["Carlens Arcus","DEF"],["Maël Gernigon","DEF"],["Haris Belkebla","MID"],["Branco van den Boomen","MID"],["Louis Mouton","MID"],["Jim Allevinah","FWD"],["Amine El Ouazzani","FWD"],["Prosper Peter","FWD"]],
+"Le Havre AC": [["Gauthier Gallon","GK"],["Ahmed Touba","DEF"],["Stephan Zagadou","DEF"],["Timothée Pembélé","DEF"],["Fodé Doucouré","DEF"],["Abdoulaye Touré","MID"],["Rassoul N'Diaye","MID"],["Amir Richardson","MID"],["Josh Maja","FWD"],["Ally Samatta","FWD"],["Andy Logbo","FWD"]],
+"AJ Auxerre": [["Paul Nardi","GK"],["Sinaly Diomandé","DEF"],["Francisco Sierralta","DEF"],["Bryan Okoh","DEF"],["Christ Makosso","DEF"],["Naouirou Ahamada","MID"],["Assane Dioussé","MID"],["Romain Faivre","MID"],["Theo Bair","FWD"],["Danny Namaso","FWD"],["Aristide Zossou","FWD"]],
+"OGC Nice": [["Yehvann Diouf","GK"],["Jonathan Clauss","DEF"],["Moïse Bombito","DEF"],["Melvin Bard","DEF"],["Mohamed Abdelmonem","DEF"],["Morgan Sanson","MID"],["Hichem Boudaoui","MID"],["Salis Abdul Samed","MID"],["Terem Moffi","FWD"],["Mohamed-Ali Cho","FWD"],["Sofiane Diop","FWD"]],
+"Le Mans FC": [["Nicolas Kocik","GK"],["Djibril Sidibé","DEF"],["Yasser Larouci","DEF"],["Raúl Torrente","DEF"],["Samuel Yohou","DEF"],["Adil Bourabaa","MID"],["Milan Robin","MID"],["Daouda Traoré","MID"],["Bilal Brahimi","FWD"],["Dame Guèye","FWD"],["Antoine Rabillard","FWD"]],
+"ESTAC Troyes": [["Zacharie Boucher","GK"],["Adrien Monfray","DEF"],["Yvann Titi","DEF"],["Noah Donkor","DEF"],["Ismaël Boura","DEF"],["Iron Gomis","MID"],["Antoine Mille","MID"],["Roman Murcy","MID"],["Renaud Ripart","FWD"],["Ibrahim Traoré","FWD"],["Amadou Diakité","FWD"]]
+};
+
+var REFEREES_BY_LEAGUE = {
+  "epl": [
+    { name:"Michael Oliver", cpg:3.2, mult:0.83, tendency:"Lets the game flow, cards sparingly" },
+    { name:"Anthony Taylor", cpg:4, mult:1.04, tendency:"Close to the league-average card rate" },
+    { name:"Chris Kavanagh", cpg:4.3, mult:1.12, tendency:"Close to the league-average card rate" },
+    { name:"Stuart Attwell", cpg:4.9, mult:1.27, tendency:"Quick to reach for cards" },
+    { name:"Craig Pawson", cpg:2.8, mult:0.73, tendency:"Lets the game flow, cards sparingly" },
+    { name:"Paul Tierney", cpg:3.3, mult:0.86, tendency:"Lets the game flow, cards sparingly" },
+    { name:"Peter Bankes", cpg:4.2, mult:1.09, tendency:"Close to the league-average card rate" },
+    { name:"Simon Hooper", cpg:4.1, mult:1.06, tendency:"Close to the league-average card rate" },
+  ],
+  "laliga": [
+    { name:"Jesús Gil Manzano", cpg:4.9, mult:0.97, tendency:"Close to the league-average card rate" },
+    { name:"José María Sánchez Martínez", cpg:4.9, mult:0.97, tendency:"Close to the league-average card rate" },
+    { name:"Juan Martínez Munuera", cpg:4.3, mult:0.85, tendency:"Lets the game flow, cards sparingly" },
+    { name:"Ricardo De Burgos Bengoetxea", cpg:4.1, mult:0.81, tendency:"Lets the game flow, cards sparingly" },
+    { name:"Isidro Díaz de Mera Escuderos", cpg:5.5, mult:1.08, tendency:"Close to the league-average card rate" },
+    { name:"César Soto Grado", cpg:5.3, mult:1.04, tendency:"Close to the league-average card rate" },
+    { name:"Alejandro Hernández Hernández", cpg:5.8, mult:1.14, tendency:"Quick to reach for cards" },
+    { name:"Mateo Busquets Ferrer", cpg:5.8, mult:1.14, tendency:"Quick to reach for cards" },
+  ],
+  "seriea": [
+    { name:"Daniele Doveri", cpg:3.3, mult:0.77, tendency:"Lets the game flow, cards sparingly" },
+    { name:"Marco Guida", cpg:4.1, mult:0.95, tendency:"Close to the league-average card rate" },
+    { name:"Simone Sozza", cpg:4.2, mult:0.97, tendency:"Close to the league-average card rate" },
+    { name:"Davide Massa", cpg:5.2, mult:1.21, tendency:"Quick to reach for cards" },
+    { name:"Fabio Maresca", cpg:5.2, mult:1.21, tendency:"Quick to reach for cards" },
+    { name:"Michael Fabbri", cpg:4.3, mult:1, tendency:"Close to the league-average card rate" },
+    { name:"Federico La Penna", cpg:4.3, mult:1, tendency:"Close to the league-average card rate" },
+    { name:"Maurizio Mariani", cpg:3.9, mult:0.9, tendency:"Close to the league-average card rate" },
+  ],
+  "bundesliga": [
+    { name:"Felix Zwayer", cpg:4.7, mult:1.2, tendency:"Quick to reach for cards" },
+    { name:"Deniz Aytekin", cpg:4.3, mult:1.1, tendency:"Close to the league-average card rate" },
+    { name:"Daniel Siebert", cpg:3.4, mult:0.87, tendency:"Lets the game flow, cards sparingly" },
+    { name:"Tobias Stieler", cpg:3.3, mult:0.84, tendency:"Lets the game flow, cards sparingly" },
+    { name:"Sascha Stegemann", cpg:3.6, mult:0.92, tendency:"Close to the league-average card rate" },
+    { name:"Tobias Welz", cpg:5.1, mult:1.3, tendency:"Quick to reach for cards" },
+    { name:"Christian Dingert", cpg:4, mult:1.02, tendency:"Close to the league-average card rate" },
+    { name:"Bastian Dankert", cpg:2.9, mult:0.74, tendency:"Lets the game flow, cards sparingly" },
+  ],
+  "ligue1": [
+    { name:"François Letexier", cpg:4.8, mult:1.16, tendency:"Quick to reach for cards" },
+    { name:"Clément Turpin", cpg:3.3, mult:0.8, tendency:"Lets the game flow, cards sparingly" },
+    { name:"Ruddy Buquet", cpg:3.1, mult:0.75, tendency:"Lets the game flow, cards sparingly" },
+    { name:"Willy Delajod", cpg:3.4, mult:0.82, tendency:"Lets the game flow, cards sparingly" },
+    { name:"Bastien Dechepy", cpg:4.9, mult:1.18, tendency:"Quick to reach for cards" },
+    { name:"Jérémie Pignard", cpg:4.7, mult:1.14, tendency:"Quick to reach for cards" },
+    { name:"Jérémy Stinat", cpg:4.3, mult:1.04, tendency:"Close to the league-average card rate" },
+    { name:"Marc Bollengier", cpg:4.6, mult:1.11, tendency:"Close to the league-average card rate" },
+  ],
+};
+
   global.FORMCHECK_DATA = { RAW_LEAGUES: RAW_LEAGUES, EURO_STRENGTH: EURO_STRENGTH, CUPS: CUPS, MATCHES: MATCHES,
+    ROSTERS: ROSTERS, REFEREES_BY_LEAGUE: REFEREES_BY_LEAGUE,
     SNAPSHOT_DATE: "2026-09-03" };
 })(window);

@@ -1,0 +1,216 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PitchCheck — match odds</title>
+<meta name="description" content="Full match report and every modelled market — result, goals, scorelines, handicap, cards, corners, shots and a real-squad Player Watch — for one fixture.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⚽</text></svg>">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="page" data-tier="free">
+
+  <header class="masthead">
+    <div class="brand">
+      <a class="brand-mark brand-mark-link" href="index.html" aria-label="PitchCheck — back to fixtures">⚽</a>
+      <div>
+        <a class="site-nav-link" href="index.html">← All fixtures</a>
+        <h1 id="pageTitle">PitchCheck</h1>
+      </div>
+    </div>
+    <div class="tier-toggle" role="group" aria-label="Demo view">
+      <span class="tier-toggle-label">Demo view</span>
+      <button class="tier-btn" data-set-tier="free" aria-pressed="true">Free</button>
+      <button class="tier-btn" data-set-tier="premium" aria-pressed="false">Premium</button>
+    </div>
+  </header>
+
+  <section class="picker picker-compact">
+    <div class="comp-row">
+      <label for="compSelect">Switch competition</label>
+      <select class="comp-select" id="compSelect"></select>
+    </div>
+
+    <div id="matchListWrap">
+      <div class="match-list" id="matchList"></div>
+    </div>
+
+    <div id="teamPickWrap">
+      <div class="matchup-row">
+        <select class="team-select" id="homeSelect"></select>
+        <span class="vs-mark">vs</span>
+        <select class="team-select" id="awaySelect"></select>
+        <button class="swap-btn" id="swapBtn" type="button" aria-label="Swap home and away">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7h13l-4-4M17 17H4l4 4"/></svg>
+        </button>
+        <button class="cta-btn" id="freePickGo" type="button">View odds →</button>
+      </div>
+      <div class="rivalry-row" id="rivalryRow"></div>
+    </div>
+  </section>
+
+  <main class="layout">
+    <section class="panel panel-free" aria-labelledby="free-heading">
+      <div class="panel-head">
+        <h2 id="free-heading">Match Report</h2>
+        <span class="panel-sub" id="freeSub"></span>
+      </div>
+
+      <div class="result-banner" id="resultBanner"></div>
+
+      <div class="wdl-bar" id="wdlBar"></div>
+      <ul class="wdl-legend" id="wdlLegend"></ul>
+
+      <div class="stat-tiles" id="goalsTiles"></div>
+
+      <p class="likely-score">Most likely scoreline <strong id="likelyScore">—</strong></p>
+    </section>
+
+    <section class="panel panel-premium" aria-labelledby="premium-heading">
+      <div class="panel-head">
+        <h2 id="premium-heading">Every Market</h2>
+        <span class="badge-premium">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10.5" width="16" height="10" rx="2"/><path d="M7.5 10.5V7a4.5 4.5 0 0 1 9 0v3.5"/></svg>
+          Premium
+        </span>
+      </div>
+
+      <div class="gate-wrap">
+        <div class="gate-overlay">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10.5" width="16" height="10" rx="2"/><path d="M7.5 10.5V7a4.5 4.5 0 0 1 9 0v3.5"/></svg>
+          <p>Double chance, handicaps, correct score, HT/FT, cards, corners, shots, real referees and a real-squad Player Watch live here.</p>
+          <button class="tier-btn" data-set-tier="premium" aria-pressed="false">Preview premium</button>
+        </div>
+
+        <div class="gate-content">
+          <div class="field-row">
+            <label for="refSelect">Referee</label>
+            <select id="refSelect"></select>
+            <span class="ref-hint" id="refHint"></span>
+          </div>
+
+          <div class="market-tabs" id="marketTabs" role="tablist"></div>
+
+          <div class="market-panel active" data-panel="result">
+            <p class="section-label">1X2 — match result</p>
+            <ul class="mini-list" id="mrResult"></ul>
+            <p class="section-label">Double chance &amp; draw no bet</p>
+            <ul class="mini-list" id="mrDouble"></ul>
+          </div>
+
+          <div class="market-panel" data-panel="goals">
+            <p class="section-label">Total goals</p>
+            <p class="section-note">Under X.5 is 100% minus the Over figure shown.</p>
+            <ul class="mini-list" id="mrGoals"></ul>
+            <p class="section-label">Both teams to score</p>
+            <ul class="mini-list" id="mrBtts"></ul>
+            <p class="section-label">Team &amp; clean-sheet markets</p>
+            <ul class="mini-list" id="mrTeamGoals"></ul>
+          </div>
+
+          <div class="market-panel" data-panel="scorelines">
+            <p class="section-label">Correct score</p>
+            <ol class="score-list" id="scoreList"></ol>
+            <p class="section-label">Half-time / full-time</p>
+            <div class="table-scroll"><table class="data-table" id="htftTable"></table></div>
+            <p class="section-label">Scoreline grid</p>
+            <div class="heatmap" id="heatmap"></div>
+          </div>
+
+          <div class="market-panel" data-panel="handicap">
+            <p class="section-label">Asian handicap — home team line</p>
+            <div class="table-scroll"><table class="data-table" id="hcapTable"></table></div>
+          </div>
+
+          <div class="market-panel" data-panel="cards">
+            <p class="section-label">Match cards</p>
+            <p class="section-note" id="cardsNote"></p>
+            <div class="stat-tiles" id="cardsTiles"></div>
+          </div>
+
+          <div class="market-panel" data-panel="corners">
+            <p class="section-label">Corners — combined</p>
+            <div class="stat-tiles" id="cornersTiles"></div>
+            <p class="section-label" id="cornersHomeLabel">Corners — home team</p>
+            <div class="stat-tiles" id="cornersHomeTiles"></div>
+            <p class="section-label" id="cornersAwayLabel">Corners — away team</p>
+            <div class="stat-tiles" id="cornersAwayTiles"></div>
+            <p class="section-label" id="sotHomeLabel">Shots on target — home team</p>
+            <div class="stat-tiles" id="sotHomeTiles"></div>
+            <p class="section-label" id="sotAwayLabel">Shots on target — away team</p>
+            <div class="stat-tiles" id="sotAwayTiles"></div>
+            <p class="section-label" id="savesHomeLabel">Goalkeeper saves — home</p>
+            <div class="stat-tiles" id="savesHomeTiles"></div>
+            <p class="section-label" id="savesAwayLabel">Goalkeeper saves — away</p>
+            <div class="stat-tiles" id="savesAwayTiles"></div>
+          </div>
+
+          <div class="market-panel" data-panel="players">
+            <p class="section-label">Player Watch</p>
+            <p class="section-note">Real current squads. Each figure is this side's modelled total (goals, assists, shots on target, cards, fouls, times fouled, saves) split across the real squad by position and prominence — an estimate, not a licensed per-player statistic.</p>
+            <div class="table-scroll">
+              <table class="data-table" id="playersTable">
+                <thead><tr>
+                  <th>Player</th><th>Team</th>
+                  <th class="pct">Score</th><th class="pct">Assist</th><th class="pct">2+ SOT</th>
+                  <th class="pct">Booked</th><th class="pct">2+ Fouls</th><th class="pct">Fouled</th><th class="pct">Saves</th>
+                </tr></thead>
+                <tbody id="playersBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <section class="panel acca" aria-labelledby="acca-heading">
+    <div class="panel-head">
+      <h2 id="acca-heading">Accumulator Builder</h2>
+      <span class="badge-premium">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10.5" width="16" height="10" rx="2"/><path d="M7.5 10.5V7a4.5 4.5 0 0 1 9 0v3.5"/></svg>
+        Premium
+      </span>
+    </div>
+
+    <div class="gate-wrap">
+      <div class="gate-overlay">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10.5" width="16" height="10" rx="2"/><path d="M7.5 10.5V7a4.5 4.5 0 0 1 9 0v3.5"/></svg>
+        <p>Add markets from any match and build a combined accumulator — your slip follows you to other matches too.</p>
+        <button class="tier-btn" data-set-tier="premium" aria-pressed="false">Preview premium</button>
+      </div>
+
+      <div class="gate-content">
+        <p class="section-label" id="accaCurrentLabel">Add from the current match</p>
+        <p class="acca-played-notice" id="accaPlayedNotice"></p>
+        <div class="acca-add-row" id="accaMarkets"></div>
+        <div class="acca-layout">
+          <div></div>
+          <div class="slip" id="slipFull">
+            <h4>Bet slip</h4>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="site-footer">
+    <p>Teams and competitions are real: rosters and 2026-27 promotions/relegations for the Premier League, La Liga, Serie A, Bundesliga and Ligue 1 are current; attack/defence ratings are derived from each club's real 2025-26 goals-for/against per game (newly promoted sides use a standard "promoted side" baseline until they build a track record).</p>
+    <p>League fixtures and results are real, snapshotted from footballwebpages.co.uk on 3 September 2026 — see <code>data.js</code> and the README to refresh them. Champions League and Europa League here are drawn only from clubs in those five leagues by final league position, with an approximate cross-league strength adjustment — not the full real draw. Domestic cup pairings shown are illustrative: real draws for these rounds haven't been made yet this early in the season.</p>
+    <p>Player Watch uses each club's real current squad; referees are real, currently-active officials with a sourced cards-per-game figure. In both cases the odds shown are this model's estimate — a team or referee total split across real names by position, prominence and disciplinary tendency — not a licensed per-player or per-official statistic, and squads/appointments will drift out of date as transfers and rotations happen (see the README to refresh <code>ROSTERS</code> and <code>REFEREES_BY_LEAGUE</code> in <code>data.js</code>). Shots on target, corners, fouls and saves are modelled from team-level style proxies the same way, not official match-report figures.</p>
+    <p>These are statistical estimates, not certainties or betting advice. If gambling stops being fun, BeGambleAware.org offers free, confidential support.</p>
+  </footer>
+
+</div>
+
+<div class="slip-bar-wrap" id="slipBarWrap">
+  <div class="slip-bar-inner" id="slipBar"></div>
+</div>
+
+<script src="data.js"></script>
+<script src="engine.js"></script>
+<script src="acca.js"></script>
+<script src="match.js"></script>
+</body>
+</html>
