@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PitchCheck — real fixtures, modelled odds</title>
+<meta name="description" content="Win, goals, cards, corners, handicaps and scorelines modelled on real current rosters and real fixtures across Europe's top five leagues, the Champions League, Europa League and domestic cups.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⚽</text></svg>">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="page" data-tier="free">
+
+  <header class="masthead">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true">⚽</span>
+      <div>
+        <h1>PitchCheck</h1>
+        <p class="tagline">Win, goals, cards, corners, handicaps and scorelines — modelled from real current rosters and real fixtures across Europe's top five leagues, the Champions League, Europa League and domestic cups.</p>
+      </div>
+    </div>
+    <div class="tier-toggle" role="group" aria-label="Demo view">
+      <span class="tier-toggle-label">Demo view</span>
+      <button class="tier-btn" data-set-tier="free" aria-pressed="true">Free</button>
+      <button class="tier-btn" data-set-tier="premium" aria-pressed="false">Premium</button>
+    </div>
+  </header>
+
+  <section class="picker">
+    <div class="comp-row">
+      <label for="compSelect">Competition</label>
+      <select class="comp-select" id="compSelect"></select>
+    </div>
+    <div class="comp-note" id="compNote"></div>
+
+    <div id="matchListWrap">
+      <div class="match-list" id="matchList"></div>
+    </div>
+
+    <div id="teamPickWrap">
+      <div class="matchup-row">
+        <select class="team-select" id="homeSelect"></select>
+        <span class="vs-mark">vs</span>
+        <select class="team-select" id="awaySelect"></select>
+        <button class="swap-btn" id="swapBtn" type="button" aria-label="Swap home and away">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7h13l-4-4M17 17H4l4 4"/></svg>
+        </button>
+      </div>
+      <div class="rivalry-row" id="rivalryRow"></div>
+    </div>
+  </section>
+
+  <main class="layout">
+    <section class="panel panel-free" aria-labelledby="free-heading">
+      <div class="panel-head">
+        <h2 id="free-heading">Match Report</h2>
+        <span class="panel-sub" id="freeSub"></span>
+      </div>
+
+      <div class="result-banner" id="resultBanner"></div>
+
+      <div class="wdl-bar" id="wdlBar"></div>
+      <ul class="wdl-legend" id="wdlLegend"></ul>
+
+      <div class="stat-tiles" id="goalsTiles"></div>
+
+      <p class="likely-score">Most likely scoreline <strong id="likelyScore">—</strong></p>
+    </section>
+
+    <section class="panel panel-premium" aria-labelledby="premium-heading">
+      <div class="panel-head">
+        <h2 id="premium-heading">Every Market</h2>
+        <span class="badge-premium">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10.5" width="16" height="10" rx="2"/><path d="M7.5 10.5V7a4.5 4.5 0 0 1 9 0v3.5"/></svg>
+          Premium
+        </span>
+      </div>
+
+      <div class="gate-wrap">
+        <div class="gate-overlay">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10.5" width="16" height="10" rx="2"/><path d="M7.5 10.5V7a4.5 4.5 0 0 1 9 0v3.5"/></svg>
+          <p>Double chance, handicaps, correct score, HT/FT, cards, corners and role-based scorer/booking odds live here.</p>
+          <button class="tier-btn" data-set-tier="premium" aria-pressed="false">Preview premium</button>
+        </div>
+
+        <div class="gate-content">
+          <div class="field-row">
+            <label for="refSelect">Referee style</label>
+            <select id="refSelect"></select>
+            <span class="ref-hint" id="refHint"></span>
+          </div>
+
+          <div class="market-tabs" id="marketTabs" role="tablist"></div>
+
+          <div class="market-panel active" data-panel="result">
+            <p class="section-label">1X2 — match result</p>
+            <ul class="mini-list" id="mrResult"></ul>
+            <p class="section-label">Double chance &amp; draw no bet</p>
+            <ul class="mini-list" id="mrDouble"></ul>
+          </div>
+
+          <div class="market-panel" data-panel="goals">
+            <p class="section-label">Total goals</p>
+            <p class="section-note">Under X.5 is 100% minus the Over figure shown.</p>
+            <ul class="mini-list" id="mrGoals"></ul>
+            <p class="section-label">Both teams to score</p>
+            <ul class="mini-list" id="mrBtts"></ul>
+            <p class="section-label">Team &amp; clean-sheet markets</p>
+            <ul class="mini-list" id="mrTeamGoals"></ul>
+          </div>
+
+          <div class="market-panel" data-panel="scorelines">
+            <p class="section-label">Correct score</p>
+            <ol class="score-list" id="scoreList"></ol>
+            <p class="section-label">Half-time / full-time</p>
+            <table class="data-table" id="htftTable"></table>
+            <p class="section-label">Scoreline grid</p>
+            <div class="heatmap" id="heatmap"></div>
+          </div>
+
+          <div class="market-panel" data-panel="handicap">
+            <p class="section-label">Asian handicap — home team line</p>
+            <table class="data-table" id="hcapTable"></table>
+          </div>
+
+          <div class="market-panel" data-panel="cardscorners">
+            <p class="section-label">Match cards</p>
+            <div class="stat-tiles" id="cardsTiles"></div>
+            <p class="section-label">Match corners</p>
+            <div class="stat-tiles" id="cornersTiles"></div>
+          </div>
+
+          <div class="market-panel" data-panel="players">
+            <p class="section-label">By role</p>
+            <p class="section-note">Modelled per position from each side's expected goals and cards — not tied to named individuals.</p>
+            <table class="data-table">
+              <thead><tr><th>Role</th><th>Team</th><th style="text-align:right;">To score</th><th style="text-align:right;">Booked</th></tr></thead>
+              <tbody id="playersBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <section class="panel acca" aria-labelledby="acca-heading">
+    <div class="panel-head">
+      <h2 id="acca-heading">Accumulator Builder</h2>
+      <span class="badge-premium">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10.5" width="16" height="10" rx="2"/><path d="M7.5 10.5V7a4.5 4.5 0 0 1 9 0v3.5"/></svg>
+        Premium
+      </span>
+    </div>
+
+    <div class="gate-wrap">
+      <div class="gate-overlay">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10.5" width="16" height="10" rx="2"/><path d="M7.5 10.5V7a4.5 4.5 0 0 1 9 0v3.5"/></svg>
+        <p>Add markets from any upcoming fixture you look at and build a combined accumulator.</p>
+        <button class="tier-btn" data-set-tier="premium" aria-pressed="false">Preview premium</button>
+      </div>
+
+      <div class="gate-content">
+        <p class="section-label" id="accaCurrentLabel">Add from the current matchup</p>
+        <p class="acca-played-notice" id="accaPlayedNotice"></p>
+        <div class="acca-add-row" id="accaMarkets"></div>
+        <div class="acca-layout">
+          <div></div>
+          <div class="slip">
+            <h4>Bet slip</h4>
+            <ul class="slip-legs" id="slipLegs"><li class="empty">No legs added yet — pick markets above.</li></ul>
+            <div class="slip-result">
+              <div class="row"><span>Legs</span><span class="v mono" id="slipCount">0</span></div>
+              <div class="row big"><span>Combined chance</span><span class="v mono" id="slipCombined">—</span></div>
+              <div class="row"><span>Model-implied odds</span><span class="v mono" id="slipOdds">—</span></div>
+            </div>
+            <p class="slip-note" id="slipNote">Two or more legs from the same match aren't independent events — treat the combined figure as indicative only.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="site-footer">
+    <p>Teams and competitions are real: rosters and 2026-27 promotions/relegations for the Premier League, La Liga, Serie A, Bundesliga and Ligue 1 are current; attack/defence ratings are derived from each club's real 2025-26 goals-for/against per game (newly promoted sides use a standard "promoted side" baseline until they build a track record).</p>
+    <p>League fixtures and results are real, snapshotted from footballwebpages.co.uk on 3 September 2026 — see <code>data.js</code> and the README to refresh them. Champions League and Europa League here are drawn only from clubs in those five leagues by final league position, with an approximate cross-league strength adjustment — not the full real draw. Domestic cup pairings shown are illustrative: real draws for these rounds haven't been made yet this early in the season. Cards, corners and role-based scorer/booking odds are modelled from team-level style proxies, not official disciplinary records.</p>
+    <p>These are statistical estimates, not certainties or betting advice. If gambling stops being fun, BeGambleAware.org offers free, confidential support.</p>
+  </footer>
+
+</div>
+
+<script src="data.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
