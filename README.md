@@ -37,9 +37,15 @@ this only really matters for local testing.
   Premier League, La Liga, Serie A, Bundesliga and Ligue 1 are current. Every match in
   `data.js` — results through early September and fixtures beyond that — is a real result
   or a real scheduled fixture, sourced from footballwebpages.co.uk.
-- **Ratings are derived, not invented.** Each club's attack/defence strength comes from its
-  real 2025-26 final-table goals-for/against per game. Newly promoted clubs (no top-flight
-  2025-26 record) get a standard "promoted side" baseline until they build one.
+- **Ratings are derived, not invented, and now move with current form.** Each club's
+  attack/defence strength starts from its real 2025-26 final-table goals-for/against per
+  game (newly promoted clubs, with no top-flight 2025-26 record, start from a standard
+  "promoted side" baseline instead). From there it blends in that club's actual goals for/
+  against over its last 6 played 2026-27 matches, weighted so the season-long baseline
+  still counts for more until a real run of current-season results builds up — see
+  `FORM_WINDOW`/`FORM_PRIOR_GAMES` in `engine.js`. A club on a hot or cold streak, or a
+  promoted side that's over- or under-performing its generic baseline, sees its rating
+  (and every market built on it) shift accordingly as `data.js` is refreshed with results.
 - **The odds themselves are a model**, not a live bookmaker feed: a Poisson goals model over
   those ratings, referee-style and cross-league adjustments layered on top. Treat every
   percentage as an estimate, not a certainty.
@@ -79,7 +85,10 @@ goes on. To refresh it:
    `[date, home, away, homeGoals, awayGoals, kickoff]` rows. Played matches have numeric
    goals; unplayed ones have `null, null` and a `"HH:MM"` kickoff string. Add new
    results/fixtures (or replace the whole block) from any results site — team names must
-   match the names used in that league's `teams` list earlier in the same file.
+   match the names used in that league's `teams` list earlier in the same file. This isn't
+   just cosmetic: every team's rating now blends in its last 6 played matches here (see
+   "Ratings are derived, not invented" above), so keeping this array current is what makes
+   ratings actually track current form rather than only last season's table.
 2. **League table / promotions** — if a season rolls over, update the `teams` array's
    `[name, goalsFor, goalsAgainst, played]` rows to the new final table, and move the
    right three teams to `[name, null, null, null]` (promoted) as promotions/relegations

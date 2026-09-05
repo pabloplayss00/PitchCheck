@@ -22,6 +22,17 @@
   var PROMOTED_DEFAULT = { attack: 0.84, defence: 1.18 };
   var FOULS_PER_CARD = 4.3; // roughly 4-5 fouls committed per card shown, professional average
 
+  // Rolling current-season form: a team's rating blends its real 2025-26
+  // season baseline with its actual goals for/against over its last
+  // FORM_WINDOW played 2026-27 matches (fewer early in the season). The
+  // baseline counts as if it were worth FORM_PRIOR_GAMES of evidence, so a
+  // team needs a real run of current-season results before form can shift
+  // its rating very far — this is why a promoted side's rating, which
+  // starts from a flat generic baseline, moves the most as it plays games.
+  var FORM_WINDOW = 6;
+  var FORM_PRIOR_GAMES = 10;
+  var RATING_MIN = 0.35, RATING_MAX = 2.5; // guard rail against a small, extreme early-season sample
+
   var TABS = [
     { id:"result", label:"Match Result" },
     { id:"goals", label:"Goals" },
@@ -54,27 +65,65 @@
   // ---------- Build rated team pools ----------
   function clamp(v,lo,hi){ return Math.max(lo, Math.min(hi, v)); }
 
+  // This season's actual goals for/against for `teamName`, over its last
+  // `window` played matches in `leagueMatches` (MATCHES[key] — already in
+  // chronological order). Returns null if the team hasn't played yet.
+  function teamRecentForm(leagueMatches, teamName, window){
+    var games = (leagueMatches || []).filter(function(m){
+      return m[3]!=null && (m[1]===teamName || m[2]===teamName);
+    });
+    if(games.length===0) return null;
+    var recent = games.slice(Math.max(0, games.length-window));
+    var gf=0, ga=0;
+    recent.forEach(function(m){
+      var isHome = m[1]===teamName;
+      gf += isHome ? m[3] : m[4];
+      ga += isHome ? m[4] : m[3];
+    });
+    return { n: recent.length, gf: gf/recent.length, ga: ga/recent.length };
+  }
+
   function buildLeague(key, raw){
     var played = raw.teams.filter(function(t){ return t[3]!=null; });
     var sumGF=0, sumGA=0, sumP=0;
     played.forEach(function(t){ sumGF+=t[1]; sumGA+=t[2]; sumP+=t[3]; });
     var avgGF = sumGF/sumP, avgGA = sumGA/sumP;
+    var leagueMatches = MATCHES[key];
     var teams = raw.teams.map(function(t, idx){
       var name=t[0], gf=t[1], ga=t[2], pld=t[3];
-      var attack, defence, promoted;
+      var baseAttack, baseDefence, promoted;
       if(pld!=null){
-        attack = (gf/pld)/avgGF;
-        defence = (ga/pld)/avgGA;
+        baseAttack = (gf/pld)/avgGF;
+        baseDefence = (ga/pld)/avgGA;
         promoted = false;
       } else {
-        attack = PROMOTED_DEFAULT.attack;
-        defence = PROMOTED_DEFAULT.defence;
+        baseAttack = PROMOTED_DEFAULT.attack;
+        baseDefence = PROMOTED_DEFAULT.defence;
         promoted = true;
       }
+
+      // Blend in this season's rolling form, weighted by how many games of
+      // it there are — a team with 0 played games this season keeps its
+      // baseline exactly; one with a full FORM_WINDOW pulls its rating
+      // toward recent results by FORM_WINDOW/(FORM_PRIOR_GAMES+FORM_WINDOW).
+      var attack = baseAttack, defence = baseDefence, formGames = 0;
+      var form = teamRecentForm(leagueMatches, name, FORM_WINDOW);
+      if(form){
+        var formAttack = form.gf/avgGF;
+        var formDefence = form.ga/avgGA;
+        var w = form.n;
+        attack = (FORM_PRIOR_GAMES*baseAttack + w*formAttack) / (FORM_PRIOR_GAMES + w);
+        defence = (FORM_PRIOR_GAMES*baseDefence + w*formDefence) / (FORM_PRIOR_GAMES + w);
+        formGames = w;
+      }
+      attack = clamp(attack, RATING_MIN, RATING_MAX);
+      defence = clamp(defence, RATING_MIN, RATING_MAX);
+
       var cardsAvg = clamp(1.9 + 0.6*(defence-1) - 0.15*(attack-1), 1.4, 3.3);
       var cornersAvg = clamp(4.8 + 1.3*(attack-1), 3.0, 7.2);
       var sotAvg = clamp(4.0 + 2.4*(attack-1), 2.0, 8.5);
       return { name:name, league:key, leagueName:raw.short, attack:attack, defence:defence,
+        baseAttack:baseAttack, baseDefence:baseDefence, formGames:formGames,
         cardsAvg:cardsAvg, cornersAvg:cornersAvg, sotAvg:sotAvg, promoted:promoted, pos: promoted?999:idx };
     });
     return { name: raw.name, short: raw.short, country: raw.country, teams: teams, avgGoals: (avgGF+avgGA)/2 };
@@ -322,7 +371,7 @@
       cleanSheetHome: ap[0], cleanSheetAway: hp[0],
       goalOver:goalOver,
       teamOverHome: 1-hp[0]-hp[1], teamOverAway: 1-ap[0]-ap[1],
-      grid:grid, topScores:topScores, anyOther:anyOther, bestScore: best.h+"-"+best.a,
+      grid:grid, topScores:topScores, anyOther:anyOther, bestScore: best.h+"-"+best.a, bestScoreP: best.p,
       hcap:hcap, htft:htft,
       cardsLambda:cardsLambda, cardLines:cardLines, homeCardsLambda:homeCardsLambda, awayCardsLambda:awayCardsLambda,
       cornersLambda:cornersLambda, cornerLines:cornerLines, corners:corners,

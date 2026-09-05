@@ -170,7 +170,7 @@
     tiles.appendChild(statTile("Over 3.5 goals", pct(model.goalOver[3.5]), model.goalOver[3.5]));
     tiles.appendChild(statTile("Both teams to score", pct(model.btts), model.btts));
 
-    document.getElementById("likelyScore").textContent = model.home.name+" "+model.bestScore.replace("-", " – ")+" "+model.away.name;
+    document.getElementById("likelyScore").textContent = model.home.name+" "+model.bestScore.replace("-", " – ")+" "+model.away.name+" ("+pct(model.bestScoreP)+")";
   }
 
   // ---------- Premium tabs ----------
