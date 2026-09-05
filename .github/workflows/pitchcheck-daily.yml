@@ -20,6 +20,7 @@ jobs:
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
+          show_full_output: true
           prompt: |
             You maintain data.js for a static football-odds site called
             PitchCheck. It has a MATCHES object keyed by league id
